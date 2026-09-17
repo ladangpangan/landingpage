@@ -1,21 +1,25 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
   CheckCircle2,
+  ClipboardList,
   CreditCard,
   ExternalLink,
   GalleryHorizontal,
   LayoutDashboard,
   Loader2,
   LogOut,
+  MapPin,
   Menu,
+  MessageCircle,
   Package,
   Phone,
   Plus,
+  RefreshCw,
   Save,
   Trash2,
   Upload,
@@ -23,6 +27,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatIDR } from '@/lib/format'
 
 let uid = 0
 const newProduct = () => ({
@@ -45,11 +50,30 @@ const newSlide = () => ({
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Ringkasan', icon: LayoutDashboard },
+  { id: 'orders', label: 'Pesanan', icon: ClipboardList },
   { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
   { id: 'products', label: 'Produk & Promo', icon: Package },
   { id: 'contact', label: 'Kontak & Banner', icon: Phone },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard },
 ]
+
+const ORDER_STATUS_LABEL = {
+  pending: 'Menunggu Pembayaran',
+  paid: 'Sudah Dibayar',
+  failed: 'Gagal',
+  cancelled: 'Dibatalkan',
+  expired: 'Kedaluwarsa',
+  refunded: 'Dikembalikan',
+}
+
+const ORDER_STATUS_CLASS = {
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  paid: 'bg-[#E1F4E7] text-[#22824E] border-[#2FA966]/30',
+  failed: 'bg-red-50 text-red-700 border-red-200',
+  cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
+  expired: 'bg-gray-100 text-gray-600 border-gray-200',
+  refunded: 'bg-blue-50 text-blue-700 border-blue-200',
+}
 
 function Field({ label, hint, children }) {
   return (
@@ -177,6 +201,26 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [hasServerKey, setHasServerKey] = useState(initialSettings.hasMidtransServerKey)
   const [serverKeyPreview, setServerKeyPreview] = useState(initialSettings.midtransServerKeyPreview)
   const [saving, setSaving] = useState(false)
+  const [orders, setOrders] = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
+
+  async function loadOrders() {
+    setOrdersLoading(true)
+    try {
+      const res = await fetch('/api/admin/orders')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal memuat pesanan.')
+      setOrders(data.orders || [])
+    } catch (error) {
+      toast.error(error.message || 'Gagal memuat pesanan.')
+    } finally {
+      setOrdersLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadOrders()
+  }, [])
 
   function updateProduct(id, patch) {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
@@ -264,6 +308,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
 
   const activeLabel = NAV_ITEMS.find((n) => n.id === tab)?.label || ''
   const promoCount = products.filter((p) => p.isPromo).length
+  const pendingOrdersCount = orders.filter((o) => o.status === 'pending').length
+  const paidOrdersCount = orders.filter((o) => o.status === 'paid').length
 
   const navList = (onNavigate) => (
     <>
@@ -385,6 +431,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <StatCard label="Pesanan Menunggu" value={pendingOrdersCount} tone={pendingOrdersCount > 0 ? 'bad' : 'default'} />
+                <StatCard label="Pesanan Terbayar" value={paidOrdersCount} tone="good" />
                 <StatCard label="Total Produk" value={products.length} />
                 <StatCard label="Produk Promo" value={promoCount} />
                 <StatCard label="Slide Hero" value={heroSlides.length} />
@@ -426,6 +474,97 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                   })}
                 </div>
               </div>
+            </div>
+          )}
+
+          {tab === 'orders' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[#4C6356]">
+                  {orders.length} pesanan{!hasMongo && ' — database belum tersambung, daftar akan selalu kosong'}
+                </p>
+                <button
+                  type="button"
+                  onClick={loadOrders}
+                  disabled={ordersLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#D6EBDC] bg-white px-3 py-1.5 text-sm text-[#1F3A28] transition hover:border-[#2FA966] disabled:opacity-60"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${ordersLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+
+              {ordersLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#2FA966]" />
+                </div>
+              ) : orders.length === 0 ? (
+                <div className={`${cardClass} text-center text-sm text-[#7E9488]`}>Belum ada pesanan masuk.</div>
+              ) : (
+                <div className="space-y-3">
+                  {orders.map((o) => {
+                    const waDigits = (o.customer?.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '62')
+                    return (
+                      <div key={o.orderId} className={cardClass}>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="font-mono text-xs text-[#7E9488]">{o.orderId}</p>
+                            <p className="text-sm text-[#4C6356]">
+                              {o.createdAt ? new Date(o.createdAt).toLocaleString('id-ID') : '-'}
+                            </p>
+                          </div>
+                          <span
+                            className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                              ORDER_STATUS_CLASS[o.status] || ORDER_STATUS_CLASS.pending
+                            }`}
+                          >
+                            {ORDER_STATUS_LABEL[o.status] || o.status}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <p className="text-sm font-medium text-[#142A1C]">{o.customer?.name}</p>
+                            <p className="mt-1 flex items-center gap-1.5 text-sm text-[#4C6356]">
+                              <Phone className="h-3.5 w-3.5 shrink-0" /> {o.customer?.phone}
+                            </p>
+                            <p className="mt-1 flex items-start gap-1.5 text-sm text-[#4C6356]">
+                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {o.customer?.address}
+                            </p>
+                            {waDigits && (
+                              <a
+                                href={`https://wa.me/${waDigits}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#E1F4E7] px-3 py-1.5 text-xs font-medium text-[#22824E] transition hover:bg-[#2FA966] hover:text-white"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                Hubungi via WhatsApp
+                              </a>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-[#7E9488]">Item Pesanan</p>
+                            <ul className="mt-1.5 space-y-1">
+                              {(o.items || []).map((it, i) => (
+                                <li key={i} className="flex justify-between gap-2 text-sm text-[#1F3A28]">
+                                  <span className="truncate">
+                                    {it.qty}x {it.name}
+                                  </span>
+                                  <span className="shrink-0">{formatIDR(it.price * it.qty)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="mt-2 flex justify-between border-t border-dashed border-[#D6EBDC] pt-2 text-sm font-medium text-[#142A1C]">
+                              <span>Total</span>
+                              <span className="text-[#2FA966]">{formatIDR(o.grossAmount)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 

@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import { getMidtransServerKey } from '@/lib/midtrans'
+import { mapTransactionStatus, updateOrderStatus } from '@/lib/orders'
 
 // Register this URL (https://<domain-anda>/api/midtrans/notification) in the
 // Midtrans dashboard under Settings > Configuration > Payment Notification URL.
@@ -40,6 +41,8 @@ export async function POST(request) {
   console.log(
     `[Midtrans] order=${order_id} status=${transaction_status} fraud=${fraud_status || '-'} amount=${gross_amount}`
   )
+
+  await updateOrderStatus(order_id, mapTransactionStatus(transaction_status, fraud_status))
 
   return NextResponse.json({ received: true })
 }

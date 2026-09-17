@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSnapClient } from '@/lib/midtrans'
 import { getLandingSettings } from '@/lib/db'
+import { createOrder } from '@/lib/orders'
 
 export async function POST(request) {
   let body
@@ -25,6 +26,7 @@ export async function POST(request) {
   const settings = await getLandingSettings()
 
   const itemDetails = []
+  const orderItems = []
   for (const item of items) {
     const quantity = Number(item?.qty)
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
@@ -39,6 +41,14 @@ export async function POST(request) {
       name: product.name.slice(0, 50),
       price: product.price,
       quantity,
+    })
+    orderItems.push({
+      id: product.id,
+      name: product.name,
+      unit: product.unit,
+      image: product.image,
+      price: product.price,
+      qty: quantity,
     })
   }
 
@@ -58,6 +68,17 @@ export async function POST(request) {
         phone: customer.phone.trim(),
         billing_address: { address: customer.address.trim().slice(0, 200) },
       },
+    })
+
+    await createOrder({
+      orderId,
+      items: orderItems,
+      customer: {
+        name: customer.name.trim().slice(0, 50),
+        phone: customer.phone.trim(),
+        address: customer.address.trim().slice(0, 200),
+      },
+      grossAmount,
     })
 
     return NextResponse.json({
