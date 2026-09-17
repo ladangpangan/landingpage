@@ -45,7 +45,15 @@ export default async function AdminDashboardPage() {
 
   const settings = await getAdminLandingSettings()
   const images = listLandingImages()
+  const bundledImages = listBundledImages()
   const hasMongo = !!process.env.MONGO_URL
 
-  return <SettingsForm initialSettings={settings} availableImages={images} hasMongo={hasMongo} />
+  return (
+    <SettingsForm
+      initialSettings={settings}
+      availableImages={images}
+      bundledImages={bundledImages}
+      hasMongo={hasMongo}
+    />
+  )
 }

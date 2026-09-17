@@ -17,6 +17,29 @@ async function requireAdmin() {
   return {}
 }
 
+export async function GET() {
+  const { error } = await requireAdmin()
+  if (error) return error
+
+  try {
+    await fs.mkdir(UPLOAD_DIR, { recursive: true })
+    const files = await fs.readdir(UPLOAD_DIR)
+    const items = await Promise.all(
+      files
+        .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
+        .map(async (f) => {
+          const stat = await fs.stat(path.join(UPLOAD_DIR, f))
+          return { filename: f, path: `/api/uploads/${f}`, size: stat.size, mtime: stat.mtimeMs }
+        })
+    )
+    items.sort((a, b) => b.mtime - a.mtime)
+    return NextResponse.json({ images: items })
+  } catch (e) {
+    console.error('[upload] gagal membaca daftar file:', e?.message || e)
+    return NextResponse.json({ images: [] })
+  }
+}
+
 export async function POST(request) {
   const { error } = await requireAdmin()
   if (error) return error

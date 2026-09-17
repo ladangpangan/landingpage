@@ -10,6 +10,7 @@ import {
   CreditCard,
   ExternalLink,
   GalleryHorizontal,
+  ImageIcon,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -55,9 +56,17 @@ const NAV_ITEMS = [
   { id: 'orders', label: 'Pesanan', icon: ClipboardList },
   { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
   { id: 'products', label: 'Produk & Promo', icon: Package },
+  { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
   { id: 'contact', label: 'Kontak & Banner', icon: Phone },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard },
 ]
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 KB'
+  const kb = bytes / 1024
+  if (kb < 1024) return `${kb.toFixed(0)} KB`
+  return `${(kb / 1024).toFixed(1)} MB`
+}
 
 const ORDER_STATUS_LABEL = {
   pending: 'Menunggu Pembayaran',
@@ -282,7 +291,7 @@ function StatCard({ label, value, tone = 'default' }) {
   )
 }
 
-export default function SettingsForm({ initialSettings, availableImages, hasMongo }) {
+export default function SettingsForm({ initialSettings, availableImages, bundledImages, hasMongo }) {
   const router = useRouter()
   const [tab, setTab] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -306,6 +315,10 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [productCategoryFilter, setProductCategoryFilter] = useState('all')
   const [editingProduct, setEditingProduct] = useState(null)
   const [isNewProduct, setIsNewProduct] = useState(false)
+  const [mediaImages, setMediaImages] = useState([])
+  const [mediaLoading, setMediaLoading] = useState(true)
+  const [mediaUploading, setMediaUploading] = useState(false)
+  const mediaFileRef = useRef(null)
 
   async function loadOrders() {
     setOrdersLoading(true)
@@ -321,9 +334,53 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
     }
   }
 
+  async function loadMedia() {
+    setMediaLoading(true)
+    try {
+      const res = await fetch('/api/admin/upload')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal memuat galeri gambar.')
+      setMediaImages(data.images || [])
+    } catch (error) {
+      toast.error(error.message || 'Gagal memuat galeri gambar.')
+    } finally {
+      setMediaLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadOrders()
+    loadMedia()
   }, [])
+
+  async function handleMediaUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setMediaUploading(true)
+    try {
+      await uploadImage(file)
+      toast.success('Gambar berhasil diunggah.')
+      await loadMedia()
+    } catch (error) {
+      toast.error(error.message || 'Gagal upload gambar.')
+    } finally {
+      setMediaUploading(false)
+      if (mediaFileRef.current) mediaFileRef.current.value = ''
+    }
+  }
+
+  async function deleteMediaImage(filename) {
+    if (!window.confirm('Hapus gambar ini? Produk/slide yang masih memakainya akan tampil rusak.')) return
+    try {
+      const res = await fetch(`/api/admin/upload/${encodeURIComponent(filename)}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal menghapus gambar.')
+      setMediaImages((prev) => prev.filter((img) => img.filename !== filename))
+      toast.success('Gambar dihapus.')
+    } catch (error) {
+      toast.error(error.message || 'Gagal menghapus gambar.')
+    }
+  }
 
   function removeProduct(id) {
     setProducts((prev) => prev.filter((p) => p.id !== id))
@@ -891,6 +948,101 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {tab === 'media' && (
+            <div className="mx-auto w-full max-w-5xl space-y-4">
+              <div className={cardClass}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold text-[#142A1C]">Galeri Gambar</h2>
+                    <p className="mt-1 text-sm text-[#4C6356]">
+                      Semua gambar yang pernah diunggah. Hapus yang tidak terpakai supaya galeri
+                      tetap rapi.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={loadMedia}
+                      disabled={mediaLoading}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[#D6EBDC] bg-white px-3 py-2.5 text-sm text-[#1F3A28] transition hover:border-[#2FA966] disabled:opacity-60"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${mediaLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={mediaUploading}
+                      onClick={() => mediaFileRef.current?.click()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#2FA966] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#22824E] disabled:opacity-60"
+                    >
+                      {mediaUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      Upload Gambar
+                    </button>
+                    <input
+                      ref={mediaFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleMediaUpload}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className={cardClass}>
+                {mediaLoading ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin text-[#2FA966]" />
+                  </div>
+                ) : mediaImages.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-[#7E9488]">
+                    Belum ada gambar yang diunggah. Klik &quot;Upload Gambar&quot; untuk mulai.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {mediaImages.map((img) => (
+                      <div key={img.filename} className="group relative overflow-hidden rounded-xl border border-[#D6EBDC]">
+                        <div className="relative aspect-square w-full bg-[#FBFEFC]">
+                          <Image src={img.path} alt={img.filename} fill sizes="200px" className="object-cover" />
+                        </div>
+                        <div className="flex items-center justify-between gap-2 bg-white px-2.5 py-2">
+                          <span className="truncate text-xs text-[#7E9488]">{formatBytes(img.size)}</span>
+                          <button
+                            type="button"
+                            onClick={() => deleteMediaImage(img.filename)}
+                            className="rounded-lg p-1 text-red-600 hover:bg-red-50"
+                            aria-label="Hapus gambar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {bundledImages?.length > 0 && (
+                <div className={cardClass}>
+                  <h2 className="text-sm font-semibold text-[#142A1C]">Foto Bawaan</h2>
+                  <p className="mt-1 text-xs text-[#7E9488]">
+                    Foto contoh dari template — sudah menempel di kode, tidak bisa dihapus dari sini.
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5 md:grid-cols-6">
+                    {bundledImages.map((src) => (
+                      <div key={src} className="relative aspect-square overflow-hidden rounded-lg border border-[#D6EBDC] opacity-80">
+                        <Image src={src} alt="" fill sizes="120px" className="object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
