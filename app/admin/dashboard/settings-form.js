@@ -15,6 +15,13 @@ const newProduct = () => ({
   image: '',
   description: '',
 })
+const newSlide = () => ({
+  id: `slide-${Date.now()}-${uid++}`,
+  badge: '',
+  title: '',
+  subtitle: '',
+  image: '',
+})
 
 function Field({ label, hint, children }) {
   return (
@@ -111,10 +118,7 @@ function ImageField({ label, value, onChange, availableImages }) {
 export default function SettingsForm({ initialSettings, availableImages }) {
   const [whatsappNumber, setWhatsappNumber] = useState(initialSettings.whatsappNumber || '')
   const [waMessage, setWaMessage] = useState(initialSettings.waMessage || '')
-  const [heroBadge, setHeroBadge] = useState(initialSettings.heroBadge || '')
-  const [heroTitle, setHeroTitle] = useState(initialSettings.heroTitle || '')
-  const [heroSubtitle, setHeroSubtitle] = useState(initialSettings.heroSubtitle || '')
-  const [heroImage, setHeroImage] = useState(initialSettings.heroImage || '')
+  const [heroSlides, setHeroSlides] = useState(initialSettings.heroSlides || [])
   const [bannerTitle, setBannerTitle] = useState(initialSettings.bannerTitle || '')
   const [bannerSubtitle, setBannerSubtitle] = useState(initialSettings.bannerSubtitle || '')
   const [products, setProducts] = useState(initialSettings.products || [])
@@ -135,6 +139,16 @@ export default function SettingsForm({ initialSettings, availableImages }) {
     setProducts((prev) => [...prev, newProduct()])
   }
 
+  function updateSlide(id, patch) {
+    setHeroSlides((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
+  }
+  function removeSlide(id) {
+    setHeroSlides((prev) => prev.filter((s) => s.id !== id))
+  }
+  function addSlide() {
+    setHeroSlides((prev) => [...prev, newSlide()])
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     if (!products.length) {
@@ -147,6 +161,16 @@ export default function SettingsForm({ initialSettings, availableImages }) {
         return
       }
     }
+    if (!heroSlides.length) {
+      toast.error('Minimal harus ada satu slide hero.')
+      return
+    }
+    for (const s of heroSlides) {
+      if (!s.title.trim()) {
+        toast.error('Judul slide hero tidak boleh kosong.')
+        return
+      }
+    }
 
     setSaving(true)
     try {
@@ -156,10 +180,7 @@ export default function SettingsForm({ initialSettings, availableImages }) {
         body: JSON.stringify({
           whatsappNumber,
           waMessage,
-          heroBadge,
-          heroTitle,
-          heroSubtitle,
-          heroImage,
+          heroSlides,
           bannerTitle,
           bannerSubtitle,
           products,
@@ -185,27 +206,71 @@ export default function SettingsForm({ initialSettings, availableImages }) {
   return (
     <form onSubmit={handleSave} className="space-y-6 pb-10">
       <section className="rounded-2xl border border-[#D6EBDC] bg-white p-6">
-        <h2 className="text-lg font-semibold text-[#142A1C]">Hero &amp; Banner</h2>
-        <p className="mt-1 text-sm text-[#4C6356]">Teks dan gambar utama yang tampil di paling atas halaman.</p>
-        <div className="mt-4 space-y-4">
-          <Field label="Badge Kecil" hint="Teks pendek di atas judul, contoh: Produsen Ayam Langsung dari Peternak">
-            <input className={inputClass} value={heroBadge} onChange={(e) => setHeroBadge(e.target.value)} />
+        <h2 className="text-lg font-semibold text-[#142A1C]">Hero Carousel</h2>
+        <p className="mt-1 text-sm text-[#4C6356]">
+          Slide yang tampil bergantian di paling atas halaman. Tambahkan beberapa slide supaya jadi carousel.
+        </p>
+        <div className="mt-4 space-y-5">
+          {heroSlides.map((s, idx) => (
+            <div key={s.id} className="space-y-3 rounded-xl border border-[#D6EBDC] p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#7E9488]">Slide {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => removeSlide(s.id)}
+                  className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <Field label="Badge Kecil" hint="Teks pendek di atas judul, contoh: Produsen Ayam Langsung dari Peternak">
+                <input className={inputClass} value={s.badge} onChange={(e) => updateSlide(s.id, { badge: e.target.value })} />
+              </Field>
+              <Field label="Judul">
+                <textarea
+                  className={inputClass}
+                  rows={2}
+                  value={s.title}
+                  onChange={(e) => updateSlide(s.id, { title: e.target.value })}
+                />
+              </Field>
+              <Field label="Sub-judul">
+                <textarea
+                  className={inputClass}
+                  rows={2}
+                  value={s.subtitle}
+                  onChange={(e) => updateSlide(s.id, { subtitle: e.target.value })}
+                />
+              </Field>
+              <ImageField
+                label="Gambar Slide"
+                value={s.image}
+                onChange={(path) => updateSlide(s.id, { image: path })}
+                availableImages={availableImages}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addSlide}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#D6EBDC] py-3 text-sm font-medium text-[#1F3A28] hover:border-[#2FA966] hover:text-[#2FA966]"
+          >
+            <Plus className="h-4 w-4" />
+            Tambah Slide
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[#D6EBDC] bg-white p-6">
+        <h2 className="text-lg font-semibold text-[#142A1C]">Banner Promo</h2>
+        <p className="mt-1 text-sm text-[#4C6356]">Strip promo gelap yang tampil di bawah carousel.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Judul Banner Promo">
+            <input className={inputClass} value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)} />
           </Field>
-          <Field label="Judul Utama">
-            <textarea className={inputClass} rows={2} value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)} />
+          <Field label="Sub-judul Banner Promo">
+            <input className={inputClass} value={bannerSubtitle} onChange={(e) => setBannerSubtitle(e.target.value)} />
           </Field>
-          <Field label="Sub-judul">
-            <textarea className={inputClass} rows={2} value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} />
-          </Field>
-          <ImageField label="Gambar Hero" value={heroImage} onChange={setHeroImage} availableImages={availableImages} />
-          <div className="grid gap-4 border-t border-dashed border-[#D6EBDC] pt-4 sm:grid-cols-2">
-            <Field label="Judul Banner Promo">
-              <input className={inputClass} value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)} />
-            </Field>
-            <Field label="Sub-judul Banner Promo">
-              <input className={inputClass} value={bannerSubtitle} onChange={(e) => setBannerSubtitle(e.target.value)} />
-            </Field>
-          </div>
         </div>
       </section>
 

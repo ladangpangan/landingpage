@@ -1,10 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
   Award,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
   MessageCircle,
   Minus,
@@ -77,6 +79,107 @@ function ProductCard({ product }) {
         )}
       </div>
     </div>
+  )
+}
+
+function HeroCarousel({ slides }) {
+  const [index, setIndex] = useState(0)
+  const touchStartX = useRef(null)
+  const count = slides.length
+
+  useEffect(() => {
+    if (count <= 1) return
+    const timer = setInterval(() => setIndex((i) => (i + 1) % count), 6000)
+    return () => clearInterval(timer)
+  }, [count])
+
+  function go(i) {
+    setIndex(((i % count) + count) % count)
+  }
+
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX
+  }
+  function handleTouchEnd(e) {
+    if (touchStartX.current === null) return
+    const delta = e.changedTouches[0].clientX - touchStartX.current
+    if (delta > 40) go(index - 1)
+    else if (delta < -40) go(index + 1)
+    touchStartX.current = null
+  }
+
+  return (
+    <section className="relative mx-4 mt-4 overflow-hidden rounded-3xl sm:mx-8">
+      <div
+        className="flex transition-transform duration-500 ease-out"
+        style={{ transform: `translateX(-${index * 100}%)` }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {slides.map((slide) => (
+          <div
+            key={slide.id}
+            className="relative grid w-full shrink-0 items-center gap-6 bg-gradient-to-br from-[#CFEAD8] to-[#CDEFD7] px-6 py-10 sm:grid-cols-2 sm:px-10 sm:py-14"
+          >
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[#2FA966]">
+                {slide.badge}
+              </span>
+              <h1 className="mt-4 font-serif text-2xl font-medium leading-tight text-[#142A1C] sm:text-3xl lg:text-4xl">
+                {slide.title}
+              </h1>
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-[#1F3A28]/80 sm:text-base">
+                {slide.subtitle}
+              </p>
+              <a
+                href="#produk"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#2FA966] px-6 py-3 text-sm font-medium text-white shadow-lg shadow-[#2FA966]/25 transition hover:bg-[#22824E]"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Belanja Sekarang
+              </a>
+            </div>
+            <div className="relative mx-auto hidden aspect-[4/5] w-full max-w-[220px] overflow-hidden rounded-2xl border border-white/60 shadow-xl sm:block">
+              <Image src={slide.image} alt={slide.title} fill sizes="220px" className="object-cover" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={() => go(index - 1)}
+            aria-label="Sebelumnya"
+            className="absolute left-3 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-[#142A1C] shadow-md transition hover:bg-white sm:flex"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => go(index + 1)}
+            aria-label="Berikutnya"
+            className="absolute right-3 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-[#142A1C] shadow-md transition hover:bg-white sm:flex"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+            {slides.map((slide, i) => (
+              <button
+                key={slide.id}
+                type="button"
+                onClick={() => go(i)}
+                aria-label={`Slide ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === index ? 'w-6 bg-[#142A1C]' : 'w-1.5 bg-[#142A1C]/30'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 
@@ -248,32 +351,8 @@ export default function Storefront({ settings }) {
           </div>
         </header>
 
-        {/* Hero banner */}
-        <section className="relative mx-4 mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-[#CFEAD8] to-[#CDEFD7] sm:mx-8">
-          <div className="relative grid items-center gap-6 px-6 py-10 sm:grid-cols-2 sm:px-10 sm:py-14">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[#2FA966]">
-                {settings.heroBadge}
-              </span>
-              <h1 className="mt-4 font-serif text-2xl font-medium leading-tight text-[#142A1C] sm:text-3xl lg:text-4xl">
-                {settings.heroTitle}
-              </h1>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-[#1F3A28]/80 sm:text-base">
-                {settings.heroSubtitle}
-              </p>
-              <a
-                href="#produk"
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#2FA966] px-6 py-3 text-sm font-medium text-white shadow-lg shadow-[#2FA966]/25 transition hover:bg-[#22824E]"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Belanja Sekarang
-              </a>
-            </div>
-            <div className="relative mx-auto hidden aspect-[4/5] w-full max-w-[220px] overflow-hidden rounded-2xl border border-white/60 shadow-xl sm:block">
-              <Image src={settings.heroImage} alt={settings.heroTitle} fill sizes="220px" className="object-cover" />
-            </div>
-          </div>
-        </section>
+        {/* Hero carousel */}
+        <HeroCarousel slides={settings.heroSlides} />
 
         {/* Promo banner strip */}
         <section className="mx-4 mt-4 rounded-2xl bg-[#142A1C] px-6 py-4 text-white sm:mx-8">
