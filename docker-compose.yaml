@@ -4,6 +4,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3000"
+    volumes:
+      - uploads_data:/app/uploads
     environment:
       MONGO_URL: ${MONGO_URL:-}
       MONGO_DB_NAME: ${MONGO_DB_NAME:-ladang_landing}
@@ -12,3 +14,6 @@ services:
       MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
       NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${NEXT_PUBLIC_MIDTRANS_CLIENT_KEY:-}
       MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
+
+volumes:
+  uploads_data:

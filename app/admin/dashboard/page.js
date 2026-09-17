@@ -7,7 +7,21 @@ import { getAdminLandingSettings } from '@/lib/db'
 import SettingsForm from './settings-form'
 import LogoutButton from './logout-button'
 
-function listLandingImages() {
+function listUploadedImages() {
+  try {
+    const dir = path.join(process.cwd(), 'uploads')
+    return fs
+      .readdirSync(dir)
+      .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
+      .map((f) => `/api/uploads/${f}`)
+      .sort()
+      .reverse()
+  } catch {
+    return []
+  }
+}
+
+function listBundledImages() {
   try {
     const dir = path.join(process.cwd(), 'public', 'landing')
     return fs
@@ -18,6 +32,11 @@ function listLandingImages() {
   } catch {
     return []
   }
+}
+
+function listLandingImages() {
+  // Newest uploads first, then the bundled starter photos.
+  return [...listUploadedImages(), ...listBundledImages()]
 }
 
 export default async function AdminDashboardPage() {

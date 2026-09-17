@@ -53,6 +53,24 @@ instead.
 Traefik, or any `ports: - "80:80"` / `"443:443"` mapping back into this
 file — see the Nginx note above.
 
+### Uploaded images don't live under `public/`
+
+Next's `output: 'standalone'` server only serves files under `public/` that
+existed **at build time** — a file written to `public/uploads/` at runtime
+(e.g. an admin image upload) 404s even though it's on disk, because the
+standalone server doesn't re-scan that directory. Confirmed by testing
+directly against `node server.js` from `.next/standalone`, not just `next
+start` (which doesn't apply here at all and warns as much).
+
+The fix already in place: uploads are written to a plain `uploads/`
+directory at the project root (`lib/uploads.js` → `UPLOAD_DIR`), *outside*
+`public/`, and served through `app/api/uploads/[filename]/route.js` — an
+ordinary request handler that reads the file fresh on every request, so it
+has no build-time/runtime split. `docker-compose.yaml` mounts the
+`uploads_data` volume at `/app/uploads` (not `/app/public/uploads`) to
+match. If image uploads ever start 404ing again, this is the first thing
+to check — don't try to move them back under `public/`.
+
 ## Nginx vhost (lives on the VPS, not in this repo)
 
 `/etc/nginx/sites-available/marketplace.ladangpangan.id` (symlinked into

@@ -1,5 +1,6 @@
 import './globals.css'
 import { Toaster } from 'sonner'
+import { CartProvider } from '@/lib/cart-context'
 
 export const metadata = {
   title: 'Ladang pangan.id — Ayam Frozen Segar Langsung dari Peternak',
@@ -11,7 +12,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="id">
       <body>
-        {children}
+        <CartProvider>{children}</CartProvider>
         <Toaster position="top-right" richColors />
       </body>
     </html>

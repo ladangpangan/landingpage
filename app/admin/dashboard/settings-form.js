@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { Plus, Trash2, ExternalLink, Loader2, Save } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Loader2, Save, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 let uid = 0
 const newProduct = () => ({
   id: `produk-${Date.now()}-${uid++}`,
   name: '',
+  category: '',
   unit: '',
   price: 0,
   image: '',
@@ -28,9 +29,94 @@ function Field({ label, hint, children }) {
 const inputClass =
   'w-full rounded-xl border border-[#E7D9C4] bg-[#FBF6EE] px-4 py-2.5 text-[#3B2C21] outline-none focus:border-[#B3402A] focus:ring-2 focus:ring-[#B3402A]/20'
 
+async function uploadImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Gagal upload gambar.')
+  return data.path
+}
+
+function ImageField({ label, value, onChange, availableImages }) {
+  const fileRef = useRef(null)
+  const [uploading, setUploading] = useState(false)
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const path = await uploadImage(file)
+      onChange(path)
+      toast.success('Gambar berhasil diunggah.')
+    } catch (error) {
+      toast.error(error.message || 'Gagal upload gambar.')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  return (
+    <div>
+      <span className="mb-1.5 block text-sm font-medium text-[#3B2C21]">{label}</span>
+      <div className="flex items-center gap-3">
+        {value && (
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[#E7D9C4] bg-[#FBF6EE]">
+            <Image src={value} alt="" fill sizes="64px" className="object-cover" />
+          </div>
+        )}
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="inline-flex items-center gap-2 rounded-xl border border-[#E7D9C4] bg-white px-4 py-2.5 text-sm font-medium text-[#3B2C21] transition hover:border-[#B3402A] disabled:opacity-60"
+        >
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {value ? 'Ganti Gambar' : 'Upload Gambar'}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleFile}
+          className="hidden"
+        />
+      </div>
+      {availableImages?.length > 0 && (
+        <div className="mt-3">
+          <span className="mb-1.5 block text-xs text-[#9C8A76]">Atau pilih dari foto yang tersedia</span>
+          <div className="flex flex-wrap gap-2">
+            {availableImages.map((src) => (
+              <button
+                type="button"
+                key={src}
+                onClick={() => onChange(src)}
+                className={`overflow-hidden rounded-md border-2 transition ${
+                  value === src ? 'border-[#B3402A]' : 'border-transparent hover:border-[#E7D9C4]'
+                }`}
+                title={src}
+              >
+                <Image src={src} alt="" width={56} height={56} className="h-14 w-14 object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SettingsForm({ initialSettings, availableImages }) {
   const [whatsappNumber, setWhatsappNumber] = useState(initialSettings.whatsappNumber || '')
   const [waMessage, setWaMessage] = useState(initialSettings.waMessage || '')
+  const [heroBadge, setHeroBadge] = useState(initialSettings.heroBadge || '')
+  const [heroTitle, setHeroTitle] = useState(initialSettings.heroTitle || '')
+  const [heroSubtitle, setHeroSubtitle] = useState(initialSettings.heroSubtitle || '')
+  const [heroImage, setHeroImage] = useState(initialSettings.heroImage || '')
+  const [bannerTitle, setBannerTitle] = useState(initialSettings.bannerTitle || '')
+  const [bannerSubtitle, setBannerSubtitle] = useState(initialSettings.bannerSubtitle || '')
   const [products, setProducts] = useState(initialSettings.products || [])
   const [clientKey, setClientKey] = useState(initialSettings.midtransClientKey || '')
   const [serverKey, setServerKey] = useState('')
@@ -70,6 +156,12 @@ export default function SettingsForm({ initialSettings, availableImages }) {
         body: JSON.stringify({
           whatsappNumber,
           waMessage,
+          heroBadge,
+          heroTitle,
+          heroSubtitle,
+          heroImage,
+          bannerTitle,
+          bannerSubtitle,
           products,
           midtransClientKey: clientKey,
           midtransServerKey: serverKey,
@@ -92,6 +184,31 @@ export default function SettingsForm({ initialSettings, availableImages }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-6 pb-10">
+      <section className="rounded-2xl border border-[#E7D9C4] bg-white p-6">
+        <h2 className="text-lg font-semibold text-[#241C15]">Hero &amp; Banner</h2>
+        <p className="mt-1 text-sm text-[#6B5D4F]">Teks dan gambar utama yang tampil di paling atas halaman.</p>
+        <div className="mt-4 space-y-4">
+          <Field label="Badge Kecil" hint="Teks pendek di atas judul, contoh: Produsen Ayam Langsung dari Peternak">
+            <input className={inputClass} value={heroBadge} onChange={(e) => setHeroBadge(e.target.value)} />
+          </Field>
+          <Field label="Judul Utama">
+            <textarea className={inputClass} rows={2} value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)} />
+          </Field>
+          <Field label="Sub-judul">
+            <textarea className={inputClass} rows={2} value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} />
+          </Field>
+          <ImageField label="Gambar Hero" value={heroImage} onChange={setHeroImage} availableImages={availableImages} />
+          <div className="grid gap-4 border-t border-dashed border-[#E7D9C4] pt-4 sm:grid-cols-2">
+            <Field label="Judul Banner Promo">
+              <input className={inputClass} value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)} />
+            </Field>
+            <Field label="Sub-judul Banner Promo">
+              <input className={inputClass} value={bannerSubtitle} onChange={(e) => setBannerSubtitle(e.target.value)} />
+            </Field>
+          </div>
+        </div>
+      </section>
+
       <section className="rounded-2xl border border-[#E7D9C4] bg-white p-6">
         <h2 className="text-lg font-semibold text-[#241C15]">Kontak WhatsApp</h2>
         <p className="mt-1 text-sm text-[#6B5D4F]">Nomor dan pesan default untuk semua tombol WhatsApp.</p>
@@ -140,6 +257,14 @@ export default function SettingsForm({ initialSettings, availableImages }) {
                     placeholder="Karkas Ayam Frozen"
                   />
                 </Field>
+                <Field label="Kategori" hint="Untuk pengelompokan filter di halaman utama">
+                  <input
+                    className={inputClass}
+                    value={p.category || ''}
+                    onChange={(e) => updateProduct(p.id, { category: e.target.value })}
+                    placeholder="Ayam Segar"
+                  />
+                </Field>
                 <Field label="Satuan">
                   <input
                     className={inputClass}
@@ -158,14 +283,6 @@ export default function SettingsForm({ initialSettings, availableImages }) {
                     placeholder="32000"
                   />
                 </Field>
-                <Field label="Path Gambar">
-                  <input
-                    className={inputClass}
-                    value={p.image}
-                    onChange={(e) => updateProduct(p.id, { image: e.target.value })}
-                    placeholder="/landing/produk-1.jpeg"
-                  />
-                </Field>
               </div>
               <Field label="Deskripsi">
                 <textarea
@@ -175,26 +292,12 @@ export default function SettingsForm({ initialSettings, availableImages }) {
                   onChange={(e) => updateProduct(p.id, { description: e.target.value })}
                 />
               </Field>
-              {availableImages.length > 0 && (
-                <div>
-                  <span className="mb-1.5 block text-xs text-[#9C8A76]">Pilih dari foto yang tersedia</span>
-                  <div className="flex flex-wrap gap-2">
-                    {availableImages.map((src) => (
-                      <button
-                        type="button"
-                        key={src}
-                        onClick={() => updateProduct(p.id, { image: src })}
-                        className={`overflow-hidden rounded-md border-2 transition ${
-                          p.image === src ? 'border-[#B3402A]' : 'border-transparent hover:border-[#E7D9C4]'
-                        }`}
-                        title={src}
-                      >
-                        <Image src={src} alt="" width={56} height={56} className="h-14 w-14 object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <ImageField
+                label="Gambar Produk"
+                value={p.image}
+                onChange={(path) => updateProduct(p.id, { image: path })}
+                availableImages={availableImages}
+              />
             </div>
           ))}
           <button

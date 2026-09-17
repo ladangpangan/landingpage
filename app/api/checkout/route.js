@@ -10,22 +10,39 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Body permintaan tidak valid.' }, { status: 400 })
   }
 
-  const { productId, qty, customer } = body || {}
-  const quantity = Number(qty)
+  const { items, customer } = body || {}
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return NextResponse.json({ error: 'Keranjang belanja kosong.' }, { status: 400 })
+  }
+  if (!customer?.name?.trim() || !customer?.phone?.trim() || !customer?.address?.trim()) {
+    return NextResponse.json(
+      { error: 'Nama, nomor WhatsApp, dan lokasi pengiriman wajib diisi.' },
+      { status: 400 }
+    )
+  }
 
   const settings = await getLandingSettings()
-  const product = settings.products.find((p) => p.id === productId)
-  if (!product) {
-    return NextResponse.json({ error: 'Produk tidak ditemukan.' }, { status: 400 })
-  }
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
-    return NextResponse.json({ error: 'Jumlah pesanan tidak valid.' }, { status: 400 })
-  }
-  if (!customer?.name?.trim() || !customer?.phone?.trim()) {
-    return NextResponse.json({ error: 'Nama dan nomor WhatsApp wajib diisi.' }, { status: 400 })
+
+  const itemDetails = []
+  for (const item of items) {
+    const quantity = Number(item?.qty)
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) {
+      return NextResponse.json({ error: 'Jumlah pesanan tidak valid.' }, { status: 400 })
+    }
+    const product = settings.products.find((p) => p.id === item.productId)
+    if (!product) {
+      return NextResponse.json({ error: 'Produk tidak ditemukan.' }, { status: 400 })
+    }
+    itemDetails.push({
+      id: product.id,
+      name: product.name.slice(0, 50),
+      price: product.price,
+      quantity,
+    })
   }
 
-  const grossAmount = product.price * quantity
+  const grossAmount = itemDetails.reduce((sum, it) => sum + it.price * it.quantity, 0)
   const orderId = `LPI-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
 
   try {
@@ -35,20 +52,11 @@ export async function POST(request) {
         order_id: orderId,
         gross_amount: grossAmount,
       },
-      item_details: [
-        {
-          id: product.id,
-          name: product.name.slice(0, 50),
-          price: product.price,
-          quantity,
-        },
-      ],
+      item_details: itemDetails,
       customer_details: {
         first_name: customer.name.trim().slice(0, 50),
         phone: customer.phone.trim(),
-        billing_address: customer.address
-          ? { address: customer.address.trim().slice(0, 200) }
-          : undefined,
+        billing_address: { address: customer.address.trim().slice(0, 200) },
       },
     })
 
