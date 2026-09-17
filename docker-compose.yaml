@@ -2,8 +2,8 @@ services:
   landing:
     build: .
     restart: unless-stopped
-    expose:
-      - "3000"
+    ports:
+      - "127.0.0.1:3001:3000"
     environment:
       MONGO_URL: ${MONGO_URL:-}
       MONGO_DB_NAME: ${MONGO_DB_NAME:-ladang_landing}
@@ -12,21 +12,3 @@ services:
       MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
       NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${NEXT_PUBLIC_MIDTRANS_CLIENT_KEY:-}
       MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
-
-  caddy:
-    build:
-      context: .
-      dockerfile: Caddy.Dockerfile
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - landing
-
-volumes:
-  caddy_data:
-  caddy_config:

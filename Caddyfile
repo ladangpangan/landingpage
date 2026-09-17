@@ -1,3 +1,0 @@
-marketplace.ladangpangan.id {
-	reverse_proxy landing:3000
-}
