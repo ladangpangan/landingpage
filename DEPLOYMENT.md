@@ -80,6 +80,7 @@ to check — don't try to move them back under `public/`.
 server {
     listen 80;
     server_name marketplace.ladangpangan.id;
+    client_max_body_size 10m;
 
     location / {
         proxy_pass http://127.0.0.1:3001;
@@ -93,6 +94,14 @@ server {
     }
 }
 ```
+
+`client_max_body_size 10m` matters here: Nginx's own default is 1MB, well under
+the app's 5MB image-upload limit (`app/api/admin/upload/route.js`). Without
+raising it, any upload/save over 1MB never reaches the app at all — Nginx
+rejects it and returns its own HTML 413 error page instead of JSON, which
+shows up client-side as a `SyntaxError: Unexpected token '<' ... is not valid
+JSON` toast (the client tried to `res.json()` an HTML page). If that error
+ever reappears, this line is the first thing to check.
 
 Certbot (`certbot --nginx -d marketplace.ladangpangan.id --redirect
 --agree-tos --no-eff-email`) adds the SSL server block and HTTP→HTTPS
