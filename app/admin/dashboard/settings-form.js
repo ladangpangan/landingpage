@@ -363,6 +363,15 @@ export default function SettingsForm({ initialSettings, availableImages }) {
                 onChange={(path) => updateProduct(p.id, { image: path })}
                 availableImages={availableImages}
               />
+              <label className="flex items-center gap-2 text-sm text-[#1F3A28]">
+                <input
+                  type="checkbox"
+                  checked={!!p.isPromo}
+                  onChange={(e) => updateProduct(p.id, { isPromo: e.target.checked })}
+                  className="h-4 w-4 rounded border-[#D6EBDC] text-[#2FA966] focus:ring-[#2FA966]"
+                />
+                Tampilkan di section Promo (kartu lebih besar, di atas semua produk)
+              </label>
             </div>
           ))}
           <button

@@ -27,37 +27,62 @@ const CERTIFICATIONS = [
   { icon: MapPin, label: 'Sidoarjo, Jawa Timur' },
 ]
 
-function ProductCard({ product }) {
+function ProductCard({ product, large = false }) {
   const { items, addItem, setQty } = useCart()
   const inCart = items.find((it) => it.productId === product.id)
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#D6EBDC] bg-white shadow-sm transition hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden bg-[#EEF8F1]">
+    <div
+      className={`overflow-hidden rounded-2xl border border-[#D6EBDC] bg-white shadow-sm transition hover:shadow-md ${
+        large ? 'sm:flex sm:items-stretch' : ''
+      }`}
+    >
+      <div
+        className={`relative overflow-hidden bg-[#EEF8F1] ${
+          large ? 'aspect-[4/3] sm:aspect-auto sm:w-2/5' : 'aspect-square'
+        }`}
+      >
         <Image
           src={product.image}
           alt={product.name}
           fill
-          sizes="(max-width: 640px) 50vw, 220px"
+          sizes={large ? '(max-width: 640px) 100vw, 320px' : '(max-width: 640px) 50vw, 220px'}
           className="object-cover"
         />
       </div>
-      <div className="p-3">
-        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-[#142A1C]">{product.name}</p>
-        <p className="mt-0.5 text-xs text-[#7E9488]">{product.unit}</p>
-        <p className="mt-1.5 font-serif text-lg text-[#2FA966]">{formatIDR(product.price)}</p>
+      <div className={large ? 'flex flex-1 flex-col p-4 sm:p-5' : 'p-3'}>
+        <p
+          className={`font-medium text-[#142A1C] ${
+            large ? 'text-lg' : 'line-clamp-2 min-h-[2.5rem] text-sm'
+          }`}
+        >
+          {product.name}
+        </p>
+        <p className={large ? 'mt-1 text-sm text-[#7E9488]' : 'mt-0.5 text-xs text-[#7E9488]'}>{product.unit}</p>
+        {large && product.description && (
+          <p className="mt-2 line-clamp-2 text-sm text-[#4C6356]">{product.description}</p>
+        )}
+        <p className={`font-serif text-[#2FA966] ${large ? 'mt-2 text-2xl' : 'mt-1.5 text-lg'}`}>
+          {formatIDR(product.price)}
+        </p>
 
         {!inCart ? (
           <button
             type="button"
             onClick={() => addItem(product, 1)}
-            className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-[#2FA966] py-2 text-sm font-medium text-white transition hover:bg-[#22824E]"
+            className={`flex items-center justify-center gap-1.5 rounded-full bg-[#2FA966] font-medium text-white transition hover:bg-[#22824E] ${
+              large ? 'mt-3 w-full py-2.5 text-sm sm:mt-auto sm:w-auto sm:self-start sm:px-6' : 'mt-2.5 w-full py-2 text-sm'
+            }`}
           >
             <Plus className="h-4 w-4" />
-            Tambah
+            {large ? 'Tambah ke Keranjang' : 'Tambah'}
           </button>
         ) : (
-          <div className="mt-2.5 flex items-center justify-between rounded-full border border-[#D6EBDC] bg-[#FFFFFF]">
+          <div
+            className={`flex items-center justify-between rounded-full border border-[#D6EBDC] bg-[#FFFFFF] ${
+              large ? 'mt-3 w-full sm:mt-auto sm:w-40' : 'mt-2.5'
+            }`}
+          >
             <button
               type="button"
               onClick={() => setQty(product.id, inCart.qty - 1)}
@@ -310,6 +335,11 @@ export default function Storefront({ settings }) {
     })
   }, [settings.products, category, search])
 
+  const promoProducts = useMemo(
+    () => settings.products.filter((p) => p.isPromo),
+    [settings.products]
+  )
+
   return (
     <div className="min-h-screen bg-[#FFFFFF] text-[#142A1C]">
       <style>{`
@@ -369,6 +399,18 @@ export default function Storefront({ settings }) {
             </div>
           ))}
         </section>
+
+        {/* Promo */}
+        {promoProducts.length > 0 && (
+          <section className="mx-4 mt-8 sm:mx-8">
+            <h2 className="font-serif text-xl font-medium text-[#142A1C] sm:text-2xl">Promo</h2>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {promoProducts.map((p) => (
+                <ProductCard key={p.id} product={p} large />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Category chips */}
         <section id="produk" className="mx-4 mt-8 sm:mx-8">
