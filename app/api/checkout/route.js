@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSnapClient } from '@/lib/midtrans'
 import { getLandingSettings } from '@/lib/db'
 import { createOrder } from '@/lib/orders'
+import { syncOrderToErp } from '@/lib/erp-sync'
 
 export async function POST(request) {
   let body
@@ -70,16 +71,22 @@ export async function POST(request) {
       },
     })
 
+    const orderCustomer = {
+      name: customer.name.trim().slice(0, 50),
+      phone: customer.phone.trim(),
+      address: customer.address.trim().slice(0, 200),
+    }
+
     await createOrder({
       orderId,
       items: orderItems,
-      customer: {
-        name: customer.name.trim().slice(0, 50),
-        phone: customer.phone.trim(),
-        address: customer.address.trim().slice(0, 200),
-      },
+      customer: orderCustomer,
       grossAmount,
     })
+
+    // Fire-and-forget: never let a slow/failing ERP sync delay or break
+    // checkout. No-ops silently until ERP_INTEGRATION_URL/KEY are set.
+    syncOrderToErp({ orderId, items: orderItems, customer: orderCustomer, grossAmount })
 
     return NextResponse.json({
       orderId,

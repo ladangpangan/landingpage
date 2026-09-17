@@ -125,6 +125,36 @@ anywhere):
 - `MIDTRANS_SERVER_KEY` / `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` /
   `MIDTRANS_IS_PRODUCTION` — optional at deploy time; can also be set from
   the `/admin` page after login, which takes precedence.
+- `ERP_INTEGRATION_URL` / `ERP_INTEGRATION_KEY` — optional; see below.
+
+## ERP integration
+
+Every successful checkout calls `syncOrderToErp()` (`lib/erp-sync.js`),
+fire-and-forget, right after the order is saved locally. It no-ops silently
+when `ERP_INTEGRATION_URL` isn't set, so checkout works identically with or
+without this configured — nothing on the ERP side is required for the
+landing page itself to function.
+
+When set, it sends:
+
+```
+POST <ERP_INTEGRATION_URL>
+Content-Type: application/json
+x-api-key: <ERP_INTEGRATION_KEY>
+
+{
+  "orderId": "LPI-...",
+  "customer": { "name": "...", "phone": "...", "address": "..." },
+  "items": [{ "id": "...", "name": "...", "price": 32000, "qty": 2 }],
+  "grossAmount": 64000
+}
+```
+
+The ERP side (a separate repo/app — this endpoint does not exist here) is
+expected to: find-or-create a Contact by phone number, create a draft Sales
+Order linked to it with these items, and return 2xx. Non-2xx responses and
+network failures are logged (`[erp-sync]`) but never surface to the
+customer or retry — this is a one-shot best-effort push, not a queue.
 
 ## What NOT to do
 
