@@ -30,8 +30,8 @@ function ProductCard({ product }) {
   const inCart = items.find((it) => it.productId === product.id)
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#E7D9C4] bg-white shadow-sm transition hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden bg-[#F4EADB]">
+    <div className="overflow-hidden rounded-2xl border border-[#D6EBDC] bg-white shadow-sm transition hover:shadow-md">
+      <div className="relative aspect-square overflow-hidden bg-[#EEF8F1]">
         <Image
           src={product.image}
           alt={product.name}
@@ -41,34 +41,34 @@ function ProductCard({ product }) {
         />
       </div>
       <div className="p-3">
-        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-[#241C15]">{product.name}</p>
-        <p className="mt-0.5 text-xs text-[#9C8A76]">{product.unit}</p>
-        <p className="mt-1.5 font-serif text-lg text-[#B3402A]">{formatIDR(product.price)}</p>
+        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-[#142A1C]">{product.name}</p>
+        <p className="mt-0.5 text-xs text-[#7E9488]">{product.unit}</p>
+        <p className="mt-1.5 font-serif text-lg text-[#2FA966]">{formatIDR(product.price)}</p>
 
         {!inCart ? (
           <button
             type="button"
             onClick={() => addItem(product, 1)}
-            className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-[#B3402A] py-2 text-sm font-medium text-white transition hover:bg-[#96311D]"
+            className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-[#2FA966] py-2 text-sm font-medium text-white transition hover:bg-[#22824E]"
           >
             <Plus className="h-4 w-4" />
             Tambah
           </button>
         ) : (
-          <div className="mt-2.5 flex items-center justify-between rounded-full border border-[#E7D9C4] bg-[#FBF6EE]">
+          <div className="mt-2.5 flex items-center justify-between rounded-full border border-[#D6EBDC] bg-[#FFFFFF]">
             <button
               type="button"
               onClick={() => setQty(product.id, inCart.qty - 1)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center text-[#B3402A]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center text-[#2FA966]"
               aria-label="Kurangi"
             >
               <Minus className="h-4 w-4" />
             </button>
-            <span className="text-sm font-medium text-[#241C15]">{inCart.qty}</span>
+            <span className="text-sm font-medium text-[#142A1C]">{inCart.qty}</span>
             <button
               type="button"
               onClick={() => setQty(product.id, inCart.qty + 1)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center text-[#B3402A]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center text-[#2FA966]"
               aria-label="Tambah"
             >
               <Plus className="h-4 w-4" />
@@ -92,20 +92,20 @@ function CartDrawer({ open, onClose, waLink }) {
         onClick={onClose}
       />
       <div
-        className={`fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col bg-[#FBF6EE] shadow-2xl transition-transform ${
+        className={`fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col bg-[#FFFFFF] shadow-2xl transition-transform ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-[#E7D9C4] px-5 py-4">
-          <h2 className="font-serif text-lg font-medium text-[#241C15]">Keranjang Belanja</h2>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="rounded-full p-1.5 hover:bg-[#F1E4D3]">
-            <X className="h-5 w-5 text-[#3B2C21]" />
+        <div className="flex items-center justify-between border-b border-[#D6EBDC] px-5 py-4">
+          <h2 className="font-serif text-lg font-medium text-[#142A1C]">Keranjang Belanja</h2>
+          <button type="button" onClick={onClose} aria-label="Tutup" className="rounded-full p-1.5 hover:bg-[#E1F4E7]">
+            <X className="h-5 w-5 text-[#1F3A28]" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {items.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center text-center text-[#9C8A76]">
+            <div className="flex h-full flex-col items-center justify-center text-center text-[#7E9488]">
               <ShoppingCart className="h-10 w-10" />
               <p className="mt-3 text-sm">Keranjang Anda masih kosong.</p>
             </div>
@@ -113,18 +113,18 @@ function CartDrawer({ open, onClose, waLink }) {
             <div className="space-y-4">
               {items.map((it) => (
                 <div key={it.productId} className="flex gap-3">
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#F4EADB]">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#EEF8F1]">
                     <Image src={it.image} alt={it.name} fill sizes="64px" className="object-cover" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-[#241C15]">{it.name}</p>
-                    <p className="text-xs text-[#9C8A76]">{formatIDR(it.price)}</p>
+                    <p className="truncate text-sm font-medium text-[#142A1C]">{it.name}</p>
+                    <p className="text-xs text-[#7E9488]">{formatIDR(it.price)}</p>
                     <div className="mt-1.5 flex items-center gap-2">
-                      <div className="flex items-center overflow-hidden rounded-full border border-[#E7D9C4]">
+                      <div className="flex items-center overflow-hidden rounded-full border border-[#D6EBDC]">
                         <button
                           type="button"
                           onClick={() => setQty(it.productId, it.qty - 1)}
-                          className="flex h-7 w-7 items-center justify-center text-[#B3402A]"
+                          className="flex h-7 w-7 items-center justify-center text-[#2FA966]"
                           aria-label="Kurangi"
                         >
                           <Minus className="h-3.5 w-3.5" />
@@ -133,7 +133,7 @@ function CartDrawer({ open, onClose, waLink }) {
                         <button
                           type="button"
                           onClick={() => setQty(it.productId, it.qty + 1)}
-                          className="flex h-7 w-7 items-center justify-center text-[#B3402A]"
+                          className="flex h-7 w-7 items-center justify-center text-[#2FA966]"
                           aria-label="Tambah"
                         >
                           <Plus className="h-3.5 w-3.5" />
@@ -142,13 +142,13 @@ function CartDrawer({ open, onClose, waLink }) {
                       <button
                         type="button"
                         onClick={() => removeItem(it.productId)}
-                        className="text-xs text-[#9C8A76] underline underline-offset-2 hover:text-[#B3402A]"
+                        className="text-xs text-[#7E9488] underline underline-offset-2 hover:text-[#2FA966]"
                       >
                         Hapus
                       </button>
                     </div>
                   </div>
-                  <p className="shrink-0 text-sm font-medium text-[#241C15]">{formatIDR(it.price * it.qty)}</p>
+                  <p className="shrink-0 text-sm font-medium text-[#142A1C]">{formatIDR(it.price * it.qty)}</p>
                 </div>
               ))}
             </div>
@@ -156,15 +156,15 @@ function CartDrawer({ open, onClose, waLink }) {
         </div>
 
         {items.length > 0 && (
-          <div className="border-t border-[#E7D9C4] px-5 py-4">
-            <div className="flex items-center justify-between text-sm text-[#6B5D4F]">
+          <div className="border-t border-[#D6EBDC] px-5 py-4">
+            <div className="flex items-center justify-between text-sm text-[#4C6356]">
               <span>Total</span>
-              <span className="font-serif text-xl text-[#B3402A]">{formatIDR(total)}</span>
+              <span className="font-serif text-xl text-[#2FA966]">{formatIDR(total)}</span>
             </div>
             <Link
               href="/checkout"
               onClick={onClose}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-[#B3402A] py-3.5 text-sm font-medium text-white transition hover:bg-[#96311D]"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-[#2FA966] py-3.5 text-sm font-medium text-white transition hover:bg-[#22824E]"
             >
               <ShieldCheck className="h-4 w-4" />
               Lanjut ke Checkout
@@ -173,7 +173,7 @@ function CartDrawer({ open, onClose, waLink }) {
               href={waLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-full border border-[#E7D9C4] bg-white py-3 text-sm font-medium text-[#3B2C21] transition hover:border-[#B3402A]"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-full border border-[#D6EBDC] bg-white py-3 text-sm font-medium text-[#1F3A28] transition hover:border-[#2FA966]"
             >
               <MessageCircle className="h-4 w-4" />
               Tanya dulu via WhatsApp
@@ -208,39 +208,39 @@ export default function Storefront({ settings }) {
   }, [settings.products, category, search])
 
   return (
-    <div className="min-h-screen bg-[#FBF6EE] text-[#241C15]">
+    <div className="min-h-screen bg-[#FFFFFF] text-[#142A1C]">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Jost:wght@300;400;500;600&display=swap');
-        .lpi-landing { font-family: 'Jost', ui-sans-serif, system-ui, sans-serif; }
-        .lpi-landing .font-serif { font-family: 'Fraunces', ui-serif, Georgia, serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@300;400;500;600&display=swap');
+        .lpi-landing { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+        .lpi-landing .font-serif { font-family: 'Playfair Display', ui-serif, Georgia, serif; }
       `}</style>
 
       <div className="lpi-landing pb-20">
         {/* Header */}
-        <header className="sticky top-0 z-40 border-b border-[#E7D9C4]/70 bg-[#FBF6EE]/95 backdrop-blur">
+        <header className="sticky top-0 z-40 border-b border-[#D6EBDC]/70 bg-[#FFFFFF]/95 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-8">
-            <span className="hidden font-serif text-lg font-medium tracking-tight text-[#241C15] sm:block">
-              Ladang <span className="text-[#7C9C7B]">pangan.id</span>
+            <span className="hidden font-serif text-lg font-medium tracking-tight text-[#142A1C] sm:block">
+              Ladang <span className="text-[#2FA966]">pangan.id</span>
             </span>
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9C8A76]" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7E9488]" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari produk disini"
-                className="w-full rounded-full border border-[#E7D9C4] bg-white py-2.5 pl-10 pr-4 text-sm text-[#3B2C21] outline-none placeholder:text-[#9C8A76] focus:border-[#B3402A]"
+                className="w-full rounded-full border border-[#D6EBDC] bg-white py-2.5 pl-10 pr-4 text-sm text-[#1F3A28] outline-none placeholder:text-[#7E9488] focus:border-[#2FA966]"
               />
             </div>
             <button
               type="button"
               onClick={() => setCartOpen(true)}
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#B3402A] text-white shadow-md shadow-[#B3402A]/20 transition hover:bg-[#96311D]"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2FA966] text-white shadow-md shadow-[#2FA966]/20 transition hover:bg-[#22824E]"
               aria-label="Buka keranjang"
             >
               <ShoppingCart className="h-5 w-5" />
               {count > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#241C15] px-1 text-[10px] font-semibold text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#142A1C] px-1 text-[10px] font-semibold text-white">
                   {count}
                 </span>
               )}
@@ -249,21 +249,21 @@ export default function Storefront({ settings }) {
         </header>
 
         {/* Hero banner */}
-        <section className="relative mx-4 mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-[#DCE7D6] to-[#F3D9C4] sm:mx-8">
+        <section className="relative mx-4 mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-[#CFEAD8] to-[#CDEFD7] sm:mx-8">
           <div className="relative grid items-center gap-6 px-6 py-10 sm:grid-cols-2 sm:px-10 sm:py-14">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[#7C9C7B]">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[#2FA966]">
                 {settings.heroBadge}
               </span>
-              <h1 className="mt-4 font-serif text-2xl font-medium leading-tight text-[#241C15] sm:text-3xl lg:text-4xl">
+              <h1 className="mt-4 font-serif text-2xl font-medium leading-tight text-[#142A1C] sm:text-3xl lg:text-4xl">
                 {settings.heroTitle}
               </h1>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-[#3B2C21]/80 sm:text-base">
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-[#1F3A28]/80 sm:text-base">
                 {settings.heroSubtitle}
               </p>
               <a
                 href="#produk"
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#B3402A] px-6 py-3 text-sm font-medium text-white shadow-lg shadow-[#B3402A]/25 transition hover:bg-[#96311D]"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#2FA966] px-6 py-3 text-sm font-medium text-white shadow-lg shadow-[#2FA966]/25 transition hover:bg-[#22824E]"
               >
                 <ShieldCheck className="h-4 w-4" />
                 Belanja Sekarang
@@ -276,7 +276,7 @@ export default function Storefront({ settings }) {
         </section>
 
         {/* Promo banner strip */}
-        <section className="mx-4 mt-4 rounded-2xl bg-[#241C15] px-6 py-4 text-white sm:mx-8">
+        <section className="mx-4 mt-4 rounded-2xl bg-[#142A1C] px-6 py-4 text-white sm:mx-8">
           <p className="font-serif text-lg font-medium">{settings.bannerTitle}</p>
           <p className="text-sm text-white/70">{settings.bannerSubtitle}</p>
         </section>
@@ -284,16 +284,16 @@ export default function Storefront({ settings }) {
         {/* Trust strip */}
         <section className="mx-4 mt-6 grid grid-cols-2 gap-3 sm:mx-8 sm:grid-cols-4">
           {CERTIFICATIONS.map(({ icon: Icon, label }) => (
-            <div key={label} className="flex items-center gap-2 rounded-xl border border-[#E7D9C4] bg-white px-3 py-2.5">
-              <Icon className="h-4 w-4 shrink-0 text-[#B3402A]" />
-              <span className="text-xs font-medium text-[#3B2C21]">{label}</span>
+            <div key={label} className="flex items-center gap-2 rounded-xl border border-[#D6EBDC] bg-white px-3 py-2.5">
+              <Icon className="h-4 w-4 shrink-0 text-[#2FA966]" />
+              <span className="text-xs font-medium text-[#1F3A28]">{label}</span>
             </div>
           ))}
         </section>
 
         {/* Category chips */}
         <section id="produk" className="mx-4 mt-8 sm:mx-8">
-          <h2 className="font-serif text-xl font-medium text-[#241C15] sm:text-2xl">Semua Produk</h2>
+          <h2 className="font-serif text-xl font-medium text-[#142A1C] sm:text-2xl">Semua Produk</h2>
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {categories.map((c) => (
               <button
@@ -302,8 +302,8 @@ export default function Storefront({ settings }) {
                 onClick={() => setCategory(c)}
                 className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition ${
                   category === c
-                    ? 'border-[#B3402A] bg-[#B3402A] text-white'
-                    : 'border-[#E7D9C4] bg-white text-[#3B2C21] hover:border-[#B3402A]'
+                    ? 'border-[#2FA966] bg-[#2FA966] text-white'
+                    : 'border-[#D6EBDC] bg-white text-[#1F3A28] hover:border-[#2FA966]'
                 }`}
               >
                 {c}
@@ -313,7 +313,7 @@ export default function Storefront({ settings }) {
 
           {/* Product grid */}
           {filtered.length === 0 ? (
-            <p className="mt-10 text-center text-sm text-[#9C8A76]">
+            <p className="mt-10 text-center text-sm text-[#7E9488]">
               Produk tidak ditemukan. Coba kata kunci lain.
             </p>
           ) : (
@@ -324,9 +324,9 @@ export default function Storefront({ settings }) {
             </div>
           )}
 
-          <p className="mt-8 text-center text-sm text-[#6B5D4F]">
+          <p className="mt-8 text-center text-sm text-[#4C6356]">
             Cari potongan lain untuk kebutuhan usaha Anda?{' '}
-            <a href={waLink} target="_blank" rel="noopener noreferrer" className="font-medium text-[#B3402A] underline underline-offset-4">
+            <a href={waLink} target="_blank" rel="noopener noreferrer" className="font-medium text-[#2FA966] underline underline-offset-4">
               Tanyakan ke tim kami
             </a>
             .
@@ -334,22 +334,22 @@ export default function Storefront({ settings }) {
         </section>
 
         {/* Footer */}
-        <footer className="mx-4 mt-14 rounded-3xl bg-[#241C15] px-6 py-10 text-[#E7D9C4] sm:mx-8 sm:px-10">
+        <footer className="mx-4 mt-14 rounded-3xl bg-[#142A1C] px-6 py-10 text-[#D6EBDC] sm:mx-8 sm:px-10">
           <div className="flex flex-col items-start justify-between gap-6 sm:flex-row">
             <div>
               <span className="font-serif text-lg font-medium text-white">
-                Ladang <span className="text-[#9CC49A]">pangan.id</span>
+                Ladang <span className="text-[#8FE0A8]">pangan.id</span>
               </span>
-              <p className="mt-2 max-w-xs text-sm text-[#C8B9A4]">
+              <p className="mt-2 max-w-xs text-sm text-[#AFD9BE]">
                 Produsen ayam frozen langsung dari peternak. Bersaing, mudah, dan fleksibel.
               </p>
             </div>
-            <div className="flex items-start gap-2 text-sm text-[#C8B9A4]">
+            <div className="flex items-start gap-2 text-sm text-[#AFD9BE]">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Kabupaten Sidoarjo, Jawa Timur, Indonesia</span>
             </div>
           </div>
-          <div className="mt-8 border-t border-white/10 pt-5 text-center text-xs text-[#9C8A76]">
+          <div className="mt-8 border-t border-white/10 pt-5 text-center text-xs text-[#7E9488]">
             © {new Date().getFullYear()} PT Ladang Pangan Indonesia. Seluruh hak cipta dilindungi.
           </div>
         </footer>
@@ -360,7 +360,7 @@ export default function Storefront({ settings }) {
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className="fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#B3402A] px-6 py-3.5 text-sm font-medium text-white shadow-xl shadow-[#B3402A]/30 sm:hidden"
+          className="fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#2FA966] px-6 py-3.5 text-sm font-medium text-white shadow-xl shadow-[#2FA966]/30 sm:hidden"
         >
           <ShoppingCart className="h-4 w-4" />
           {count} item — Lihat Keranjang

@@ -48,12 +48,12 @@ export default async function AdminDashboardPage() {
   const images = listLandingImages()
 
   return (
-    <div className="min-h-screen bg-[#FBF6EE] px-4 py-8 sm:px-6">
+    <div className="min-h-screen bg-[#FFFFFF] px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-[#241C15]">Landing Page Ayam Frozen</h1>
-            <p className="mt-1 text-sm text-[#6B5D4F]">
+            <h1 className="text-2xl font-semibold text-[#142A1C]">Landing Page Ayam Frozen</h1>
+            <p className="mt-1 text-sm text-[#4C6356]">
               Kelola konten halaman{' '}
               <a href="/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
                 landing page

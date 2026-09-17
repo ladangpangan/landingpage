@@ -19,15 +19,15 @@ const newProduct = () => ({
 function Field({ label, hint, children }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-[#3B2C21]">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium text-[#1F3A28]">{label}</span>
       {children}
-      {hint && <p className="mt-1 text-xs text-[#9C8A76]">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-[#7E9488]">{hint}</p>}
     </label>
   )
 }
 
 const inputClass =
-  'w-full rounded-xl border border-[#E7D9C4] bg-[#FBF6EE] px-4 py-2.5 text-[#3B2C21] outline-none focus:border-[#B3402A] focus:ring-2 focus:ring-[#B3402A]/20'
+  'w-full rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-2.5 text-[#1F3A28] outline-none focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20'
 
 async function uploadImage(file) {
   const formData = new FormData()
@@ -60,10 +60,10 @@ function ImageField({ label, value, onChange, availableImages }) {
 
   return (
     <div>
-      <span className="mb-1.5 block text-sm font-medium text-[#3B2C21]">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium text-[#1F3A28]">{label}</span>
       <div className="flex items-center gap-3">
         {value && (
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[#E7D9C4] bg-[#FBF6EE]">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[#D6EBDC] bg-[#FFFFFF]">
             <Image src={value} alt="" fill sizes="64px" className="object-cover" />
           </div>
         )}
@@ -71,7 +71,7 @@ function ImageField({ label, value, onChange, availableImages }) {
           type="button"
           disabled={uploading}
           onClick={() => fileRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E7D9C4] bg-white px-4 py-2.5 text-sm font-medium text-[#3B2C21] transition hover:border-[#B3402A] disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#D6EBDC] bg-white px-4 py-2.5 text-sm font-medium text-[#1F3A28] transition hover:border-[#2FA966] disabled:opacity-60"
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           {value ? 'Ganti Gambar' : 'Upload Gambar'}
@@ -86,7 +86,7 @@ function ImageField({ label, value, onChange, availableImages }) {
       </div>
       {availableImages?.length > 0 && (
         <div className="mt-3">
-          <span className="mb-1.5 block text-xs text-[#9C8A76]">Atau pilih dari foto yang tersedia</span>
+          <span className="mb-1.5 block text-xs text-[#7E9488]">Atau pilih dari foto yang tersedia</span>
           <div className="flex flex-wrap gap-2">
             {availableImages.map((src) => (
               <button
@@ -94,7 +94,7 @@ function ImageField({ label, value, onChange, availableImages }) {
                 key={src}
                 onClick={() => onChange(src)}
                 className={`overflow-hidden rounded-md border-2 transition ${
-                  value === src ? 'border-[#B3402A]' : 'border-transparent hover:border-[#E7D9C4]'
+                  value === src ? 'border-[#2FA966]' : 'border-transparent hover:border-[#D6EBDC]'
                 }`}
                 title={src}
               >
@@ -184,9 +184,9 @@ export default function SettingsForm({ initialSettings, availableImages }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-6 pb-10">
-      <section className="rounded-2xl border border-[#E7D9C4] bg-white p-6">
-        <h2 className="text-lg font-semibold text-[#241C15]">Hero &amp; Banner</h2>
-        <p className="mt-1 text-sm text-[#6B5D4F]">Teks dan gambar utama yang tampil di paling atas halaman.</p>
+      <section className="rounded-2xl border border-[#D6EBDC] bg-white p-6">
+        <h2 className="text-lg font-semibold text-[#142A1C]">Hero &amp; Banner</h2>
+        <p className="mt-1 text-sm text-[#4C6356]">Teks dan gambar utama yang tampil di paling atas halaman.</p>
         <div className="mt-4 space-y-4">
           <Field label="Badge Kecil" hint="Teks pendek di atas judul, contoh: Produsen Ayam Langsung dari Peternak">
             <input className={inputClass} value={heroBadge} onChange={(e) => setHeroBadge(e.target.value)} />
@@ -198,7 +198,7 @@ export default function SettingsForm({ initialSettings, availableImages }) {
             <textarea className={inputClass} rows={2} value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} />
           </Field>
           <ImageField label="Gambar Hero" value={heroImage} onChange={setHeroImage} availableImages={availableImages} />
-          <div className="grid gap-4 border-t border-dashed border-[#E7D9C4] pt-4 sm:grid-cols-2">
+          <div className="grid gap-4 border-t border-dashed border-[#D6EBDC] pt-4 sm:grid-cols-2">
             <Field label="Judul Banner Promo">
               <input className={inputClass} value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)} />
             </Field>
@@ -209,9 +209,9 @@ export default function SettingsForm({ initialSettings, availableImages }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-[#E7D9C4] bg-white p-6">
-        <h2 className="text-lg font-semibold text-[#241C15]">Kontak WhatsApp</h2>
-        <p className="mt-1 text-sm text-[#6B5D4F]">Nomor dan pesan default untuk semua tombol WhatsApp.</p>
+      <section className="rounded-2xl border border-[#D6EBDC] bg-white p-6">
+        <h2 className="text-lg font-semibold text-[#142A1C]">Kontak WhatsApp</h2>
+        <p className="mt-1 text-sm text-[#4C6356]">Nomor dan pesan default untuk semua tombol WhatsApp.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Nomor WhatsApp" hint="Format internasional tanpa &quot;+&quot;, contoh 6282229348883.">
             <input
@@ -232,14 +232,14 @@ export default function SettingsForm({ initialSettings, availableImages }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-[#E7D9C4] bg-white p-6">
-        <h2 className="text-lg font-semibold text-[#241C15]">Produk</h2>
-        <p className="mt-1 text-sm text-[#6B5D4F]">Produk yang tampil di halaman, termasuk harga saat checkout.</p>
+      <section className="rounded-2xl border border-[#D6EBDC] bg-white p-6">
+        <h2 className="text-lg font-semibold text-[#142A1C]">Produk</h2>
+        <p className="mt-1 text-sm text-[#4C6356]">Produk yang tampil di halaman, termasuk harga saat checkout.</p>
         <div className="mt-4 space-y-5">
           {products.map((p, idx) => (
-            <div key={p.id} className="space-y-3 rounded-xl border border-[#E7D9C4] p-4">
+            <div key={p.id} className="space-y-3 rounded-xl border border-[#D6EBDC] p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-[#9C8A76]">Produk {idx + 1}</span>
+                <span className="text-sm font-medium text-[#7E9488]">Produk {idx + 1}</span>
                 <button
                   type="button"
                   onClick={() => removeProduct(p.id)}
@@ -303,7 +303,7 @@ export default function SettingsForm({ initialSettings, availableImages }) {
           <button
             type="button"
             onClick={addProduct}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#E7D9C4] py-3 text-sm font-medium text-[#3B2C21] hover:border-[#B3402A] hover:text-[#B3402A]"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#D6EBDC] py-3 text-sm font-medium text-[#1F3A28] hover:border-[#2FA966] hover:text-[#2FA966]"
           >
             <Plus className="h-4 w-4" />
             Tambah Produk
@@ -311,9 +311,9 @@ export default function SettingsForm({ initialSettings, availableImages }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-[#E7D9C4] bg-white p-6">
-        <h2 className="text-lg font-semibold text-[#241C15]">Payment Gateway (Midtrans)</h2>
-        <p className="mt-1 text-sm text-[#6B5D4F]">
+      <section className="rounded-2xl border border-[#D6EBDC] bg-white p-6">
+        <h2 className="text-lg font-semibold text-[#142A1C]">Payment Gateway (Midtrans)</h2>
+        <p className="mt-1 text-sm text-[#4C6356]">
           Ambil Server Key &amp; Client Key dari dashboard Midtrans (Settings &gt; Access Keys). Gunakan
           mode Sandbox dulu sebelum go-live.
         </p>
@@ -343,10 +343,10 @@ export default function SettingsForm({ initialSettings, availableImages }) {
               placeholder={hasServerKey ? '••••••••••••' : 'SB-Mid-server-xxxxxxxxxxxx'}
             />
           </Field>
-          <div className="flex items-center justify-between rounded-xl border border-[#E7D9C4] p-3">
+          <div className="flex items-center justify-between rounded-xl border border-[#D6EBDC] p-3">
             <div>
-              <p className="text-sm font-medium text-[#241C15]">Mode Production</p>
-              <p className="text-xs text-[#9C8A76]">
+              <p className="text-sm font-medium text-[#142A1C]">Mode Production</p>
+              <p className="text-xs text-[#7E9488]">
                 {isProduction ? 'AKTIF — pembayaran nyata akan diproses.' : 'Nonaktif (Sandbox) — aman untuk uji coba.'}
               </p>
             </div>
@@ -356,7 +356,7 @@ export default function SettingsForm({ initialSettings, availableImages }) {
               aria-checked={isProduction}
               onClick={() => setIsProduction((v) => !v)}
               className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                isProduction ? 'bg-[#B3402A]' : 'bg-[#E7D9C4]'
+                isProduction ? 'bg-[#2FA966]' : 'bg-[#D6EBDC]'
               }`}
             >
               <span
@@ -374,14 +374,14 @@ export default function SettingsForm({ initialSettings, availableImages }) {
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-[#6B5D4F] underline underline-offset-4 hover:text-[#241C15]"
+          className="inline-flex items-center gap-1.5 text-sm text-[#4C6356] underline underline-offset-4 hover:text-[#142A1C]"
         >
           Lihat halaman <ExternalLink className="h-3.5 w-3.5" />
         </a>
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#B3402A] px-6 py-3 font-medium text-white transition hover:bg-[#96311D] disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2FA966] px-6 py-3 font-medium text-white transition hover:bg-[#22824E] disabled:opacity-60"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Simpan Pengaturan
