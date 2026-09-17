@@ -141,31 +141,41 @@ function HeroCarousel({ slides }) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {slides.map((slide) => (
+        {slides.map((slide, i) => (
           <div
             key={slide.id}
-            className="relative grid w-full shrink-0 items-center gap-6 bg-gradient-to-br from-[#CFEAD8] to-[#CDEFD7] px-6 py-10 sm:grid-cols-2 sm:px-10 sm:py-14"
+            className="relative h-[380px] w-full shrink-0 overflow-hidden sm:h-[440px] lg:h-[480px]"
           >
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[#2FA966]">
+            {slide.image ? (
+              <Image
+                src={slide.image}
+                alt={slide.title}
+                fill
+                sizes="100vw"
+                priority={i === 0}
+                className="object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-[#CFEAD8] to-[#CDEFD7]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0B1C10]/85 via-[#0B1C10]/35 to-[#0B1C10]/5" />
+            <div className="relative z-10 flex h-full flex-col justify-end px-6 pb-8 pt-6 sm:px-12 sm:pb-12">
+              <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-white backdrop-blur">
                 {slide.badge}
               </span>
-              <h1 className="mt-4 font-serif text-2xl font-medium leading-tight text-[#142A1C] sm:text-3xl lg:text-4xl">
+              <h1 className="mt-4 max-w-xl font-serif text-2xl font-medium leading-tight text-white sm:text-3xl lg:text-4xl">
                 {slide.title}
               </h1>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-[#1F3A28]/80 sm:text-base">
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-white/85 sm:text-base">
                 {slide.subtitle}
               </p>
               <a
                 href="#produk"
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#2FA966] px-6 py-3 text-sm font-medium text-white shadow-lg shadow-[#2FA966]/25 transition hover:bg-[#22824E]"
+                className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-[#2FA966] px-6 py-3 text-sm font-medium text-white shadow-lg shadow-[#2FA966]/25 transition hover:bg-[#22824E]"
               >
                 <ShieldCheck className="h-4 w-4" />
                 Belanja Sekarang
               </a>
-            </div>
-            <div className="relative mx-auto hidden aspect-[4/5] w-full max-w-[220px] overflow-hidden rounded-2xl border border-white/60 shadow-xl sm:block">
-              <Image src={slide.image} alt={slide.title} fill sizes="220px" className="object-cover" />
             </div>
           </div>
         ))}
@@ -352,9 +362,15 @@ export default function Storefront({ settings }) {
         {/* Header */}
         <header className="sticky top-0 z-40 border-b border-[#D6EBDC]/70 bg-[#FFFFFF]/95 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-8">
-            <span className="hidden font-serif text-lg font-medium tracking-tight text-[#142A1C] sm:block">
-              Ladang <span className="text-[#2FA966]">pangan.id</span>
-            </span>
+            {settings.logoUrl ? (
+              <div className="relative h-9 w-32 shrink-0 sm:h-10 sm:w-36">
+                <Image src={settings.logoUrl} alt="ladangpangan.id" fill sizes="144px" className="object-contain object-left" />
+              </div>
+            ) : (
+              <span className="hidden font-serif text-lg font-medium tracking-tight text-[#142A1C] sm:block">
+                ladang<span className="text-[#2FA966]">pangan.id</span>
+              </span>
+            )}
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7E9488]" />
               <input
@@ -458,9 +474,15 @@ export default function Storefront({ settings }) {
         <footer className="mx-4 mt-14 rounded-3xl bg-[#142A1C] px-6 py-10 text-[#D6EBDC] sm:mx-8 sm:px-10">
           <div className="flex flex-col items-start justify-between gap-6 sm:flex-row">
             <div>
-              <span className="font-serif text-lg font-medium text-white">
-                Ladang <span className="text-[#8FE0A8]">pangan.id</span>
-              </span>
+              {settings.logoUrl ? (
+                <div className="relative h-10 w-36 rounded-lg bg-white/95 p-1.5">
+                  <Image src={settings.logoUrl} alt="ladangpangan.id" fill sizes="144px" className="object-contain" />
+                </div>
+              ) : (
+                <span className="font-serif text-lg font-medium text-white">
+                  ladang<span className="text-[#8FE0A8]">pangan.id</span>
+                </span>
+              )}
               <p className="mt-2 max-w-xs text-sm text-[#AFD9BE]">
                 Produsen ayam frozen langsung dari peternak. Bersaing, mudah, dan fleksibel.
               </p>

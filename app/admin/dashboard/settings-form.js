@@ -17,10 +17,12 @@ import {
   Menu,
   MessageCircle,
   Package,
+  Pencil,
   Phone,
   Plus,
   RefreshCw,
   Save,
+  Search,
   Trash2,
   Upload,
   X,
@@ -169,6 +171,102 @@ function ImageField({ label, value, onChange, availableImages }) {
   )
 }
 
+function ProductEditModal({ product, isNew, onChange, onSave, onClose, availableImages }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-w-lg sm:rounded-2xl">
+        <div className="flex items-center justify-between border-b border-[#D6EBDC] px-5 py-4">
+          <h3 className="text-base font-semibold text-[#142A1C]">
+            {isNew ? 'Tambah Produk' : 'Edit Produk'}
+          </h3>
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 hover:bg-[#F7FBF8]" aria-label="Tutup">
+            <X className="h-5 w-5 text-[#1F3A28]" />
+          </button>
+        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <Field label="Nama Produk">
+            <input
+              className={inputClass}
+              value={product.name}
+              onChange={(e) => onChange({ name: e.target.value })}
+              placeholder="Karkas Ayam Frozen"
+              autoFocus
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Kategori" hint="Untuk pengelompokan filter">
+              <input
+                className={inputClass}
+                value={product.category || ''}
+                onChange={(e) => onChange({ category: e.target.value })}
+                placeholder="Ayam Segar"
+              />
+            </Field>
+            <Field label="Satuan">
+              <input
+                className={inputClass}
+                value={product.unit}
+                onChange={(e) => onChange({ unit: e.target.value })}
+                placeholder="per ekor (± 0.9–1 kg)"
+              />
+            </Field>
+          </div>
+          <Field label="Harga (Rp)">
+            <input
+              type="number"
+              min={0}
+              className={inputClass}
+              value={product.price || ''}
+              onChange={(e) => onChange({ price: Number(e.target.value) || 0 })}
+              placeholder="32000"
+            />
+          </Field>
+          <Field label="Deskripsi">
+            <textarea
+              className={inputClass}
+              rows={2}
+              value={product.description}
+              onChange={(e) => onChange({ description: e.target.value })}
+            />
+          </Field>
+          <ImageField
+            label="Gambar Produk"
+            value={product.image}
+            onChange={(path) => onChange({ image: path })}
+            availableImages={availableImages}
+          />
+          <label className="flex items-center gap-2 text-sm text-[#1F3A28]">
+            <input
+              type="checkbox"
+              checked={!!product.isPromo}
+              onChange={(e) => onChange({ isPromo: e.target.checked })}
+              className="h-4 w-4 rounded border-[#D6EBDC] text-[#2FA966] focus:ring-[#2FA966]"
+            />
+            Tampilkan di section Promo (kartu lebih besar, di atas semua produk)
+          </label>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-[#D6EBDC] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#D6EBDC] px-4 py-2.5 text-sm font-medium text-[#1F3A28] hover:border-[#2FA966]"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="rounded-xl bg-[#2FA966] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#22824E]"
+          >
+            {isNew ? 'Tambah' : 'Simpan Perubahan'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function StatCard({ label, value, tone = 'default' }) {
   const toneClass =
     tone === 'good'
@@ -189,6 +287,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [tab, setTab] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  const [logoUrl, setLogoUrl] = useState(initialSettings.logoUrl || '')
   const [whatsappNumber, setWhatsappNumber] = useState(initialSettings.whatsappNumber || '')
   const [waMessage, setWaMessage] = useState(initialSettings.waMessage || '')
   const [heroSlides, setHeroSlides] = useState(initialSettings.heroSlides || [])
@@ -203,6 +302,10 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [saving, setSaving] = useState(false)
   const [orders, setOrders] = useState([])
   const [ordersLoading, setOrdersLoading] = useState(true)
+  const [productSearch, setProductSearch] = useState('')
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all')
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [isNewProduct, setIsNewProduct] = useState(false)
 
   async function loadOrders() {
     setOrdersLoading(true)
@@ -222,14 +325,40 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
     loadOrders()
   }, [])
 
-  function updateProduct(id, patch) {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
-  }
   function removeProduct(id) {
     setProducts((prev) => prev.filter((p) => p.id !== id))
   }
-  function addProduct() {
-    setProducts((prev) => [...prev, newProduct()])
+
+  function openNewProduct() {
+    setEditingProduct(newProduct())
+    setIsNewProduct(true)
+  }
+  function openEditProduct(p) {
+    setEditingProduct({ ...p })
+    setIsNewProduct(false)
+  }
+  function closeProductModal() {
+    setEditingProduct(null)
+  }
+  function patchEditingProduct(patch) {
+    setEditingProduct((prev) => ({ ...prev, ...patch }))
+  }
+  function saveProductModal() {
+    if (!editingProduct.name.trim()) {
+      toast.error('Nama produk tidak boleh kosong.')
+      return
+    }
+    if (isNewProduct) {
+      setProducts((prev) => [...prev, editingProduct])
+    } else {
+      setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
+    }
+    setEditingProduct(null)
+  }
+  function deleteProductConfirm(id, name) {
+    if (window.confirm(`Hapus produk "${name || 'ini'}"?`)) {
+      removeProduct(id)
+    }
   }
 
   function updateSlide(id, patch) {
@@ -281,6 +410,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          logoUrl,
           whatsappNumber,
           waMessage,
           heroSlides,
@@ -310,13 +440,27 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const promoCount = products.filter((p) => p.isPromo).length
   const pendingOrdersCount = orders.filter((o) => o.status === 'pending').length
   const paidOrdersCount = orders.filter((o) => o.status === 'paid').length
+  const productCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory = productCategoryFilter === 'all' || p.category === productCategoryFilter
+    const q = productSearch.trim().toLowerCase()
+    const matchesSearch =
+      !q || p.name?.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)
+    return matchesCategory && matchesSearch
+  })
 
   const navList = (onNavigate) => (
     <>
       <div className="border-b border-[#D6EBDC] px-6 py-5">
-        <p className="font-serif text-lg font-medium text-[#142A1C]">
-          Ladang <span className="text-[#2FA966]">pangan.id</span>
-        </p>
+        {logoUrl ? (
+          <div className="relative h-9 w-32">
+            <Image src={logoUrl} alt="ladangpangan.id" fill sizes="128px" className="object-contain object-left" />
+          </div>
+        ) : (
+          <p className="font-serif text-lg font-medium text-[#142A1C]">
+            ladang<span className="text-[#2FA966]">pangan.id</span>
+          </p>
+        )}
         <p className="text-xs text-[#7E9488]">Admin Panel</p>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -415,9 +559,9 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           </button>
         </header>
 
-        <form id="settings-form" onSubmit={handleSave} className="mx-auto w-full max-w-3xl flex-1 space-y-6 px-4 py-6 sm:px-6">
+        <form id="settings-form" onSubmit={handleSave} className="w-full flex-1 space-y-6 px-4 py-6 sm:px-6">
           {tab === 'overview' && (
-            <div className="space-y-6">
+            <div className="mx-auto w-full max-w-3xl space-y-6">
               {!hasMongo && (
                 <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4">
                   <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
@@ -478,7 +622,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           )}
 
           {tab === 'orders' && (
-            <div className="space-y-4">
+            <div className="mx-auto w-full max-w-3xl space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[#4C6356]">
                   {orders.length} pesanan{!hasMongo && ' — database belum tersambung, daftar akan selalu kosong'}
@@ -569,7 +713,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           )}
 
           {tab === 'hero' && (
-            <div className={cardClass}>
+            <div className={`mx-auto w-full max-w-3xl ${cardClass}`}>
               <h2 className="text-base font-semibold text-[#142A1C]">Hero Carousel</h2>
               <p className="mt-1 text-sm text-[#4C6356]">
                 Slide yang tampil bergantian di paling atas halaman. Tambahkan beberapa slide supaya jadi carousel.
@@ -627,97 +771,146 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           )}
 
           {tab === 'products' && (
-            <div className={cardClass}>
-              <h2 className="text-base font-semibold text-[#142A1C]">Produk</h2>
-              <p className="mt-1 text-sm text-[#4C6356]">Produk yang tampil di halaman, termasuk harga saat checkout.</p>
-              <div className="mt-4 space-y-5">
-                {products.map((p, idx) => (
-                  <div key={p.id} className="space-y-3 rounded-xl border border-[#D6EBDC] p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-[#7E9488]">Produk {idx + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeProduct(p.id)}
-                        className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="Nama Produk">
-                        <input
-                          className={inputClass}
-                          value={p.name}
-                          onChange={(e) => updateProduct(p.id, { name: e.target.value })}
-                          placeholder="Karkas Ayam Frozen"
-                        />
-                      </Field>
-                      <Field label="Kategori" hint="Untuk pengelompokan filter di halaman utama">
-                        <input
-                          className={inputClass}
-                          value={p.category || ''}
-                          onChange={(e) => updateProduct(p.id, { category: e.target.value })}
-                          placeholder="Ayam Segar"
-                        />
-                      </Field>
-                      <Field label="Satuan">
-                        <input
-                          className={inputClass}
-                          value={p.unit}
-                          onChange={(e) => updateProduct(p.id, { unit: e.target.value })}
-                          placeholder="per ekor (± 0.9–1 kg)"
-                        />
-                      </Field>
-                      <Field label="Harga (Rp)">
-                        <input
-                          type="number"
-                          min={0}
-                          className={inputClass}
-                          value={p.price || ''}
-                          onChange={(e) => updateProduct(p.id, { price: Number(e.target.value) || 0 })}
-                          placeholder="32000"
-                        />
-                      </Field>
-                    </div>
-                    <Field label="Deskripsi">
-                      <textarea
-                        className={inputClass}
-                        rows={2}
-                        value={p.description}
-                        onChange={(e) => updateProduct(p.id, { description: e.target.value })}
-                      />
-                    </Field>
-                    <ImageField
-                      label="Gambar Produk"
-                      value={p.image}
-                      onChange={(path) => updateProduct(p.id, { image: path })}
-                      availableImages={availableImages}
-                    />
-                    <label className="flex items-center gap-2 text-sm text-[#1F3A28]">
-                      <input
-                        type="checkbox"
-                        checked={!!p.isPromo}
-                        onChange={(e) => updateProduct(p.id, { isPromo: e.target.checked })}
-                        className="h-4 w-4 rounded border-[#D6EBDC] text-[#2FA966] focus:ring-[#2FA966]"
-                      />
-                      Tampilkan di section Promo (kartu lebih besar, di atas semua produk)
-                    </label>
+            <div className="mx-auto w-full max-w-5xl space-y-4">
+              <div className={cardClass}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold text-[#142A1C]">Produk & Promo</h2>
+                    <p className="mt-1 text-sm text-[#4C6356]">
+                      {products.length} produk total{promoCount > 0 && ` · ${promoCount} tampil di Promo`}
+                    </p>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addProduct}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#D6EBDC] py-3 text-sm font-medium text-[#1F3A28] hover:border-[#2FA966] hover:text-[#2FA966]"
-                >
-                  <Plus className="h-4 w-4" />
-                  Tambah Produk
-                </button>
+                  <button
+                    type="button"
+                    onClick={openNewProduct}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#2FA966] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#22824E]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Tambah Produk
+                  </button>
+                </div>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7E9488]" />
+                    <input
+                      className={`${inputClass} pl-10`}
+                      placeholder="Cari nama atau kategori produk..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                    />
+                  </div>
+                  {productCategories.length > 0 && (
+                    <select
+                      className={`${inputClass} sm:w-56`}
+                      value={productCategoryFilter}
+                      onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    >
+                      <option value="all">Semua kategori</option>
+                      {productCategories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-[#D6EBDC] bg-white">
+                {filteredProducts.length === 0 ? (
+                  <div className="p-10 text-center text-sm text-[#7E9488]">
+                    {products.length === 0
+                      ? 'Belum ada produk. Klik "Tambah Produk" untuk mulai.'
+                      : 'Tidak ada produk yang cocok dengan pencarian/filter.'}
+                  </div>
+                ) : (
+                  <div className="max-h-[65vh] overflow-y-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="sticky top-0 z-10 bg-[#F7FBF8] text-xs font-medium uppercase tracking-wide text-[#7E9488]">
+                        <tr>
+                          <th className="px-4 py-3">Produk</th>
+                          <th className="px-4 py-3">Kategori</th>
+                          <th className="px-4 py-3">Harga</th>
+                          <th className="px-4 py-3">Promo</th>
+                          <th className="px-4 py-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EFF6F1]">
+                        {filteredProducts.map((p) => (
+                          <tr key={p.id} className="hover:bg-[#F7FBF8]">
+                            <td className="px-4 py-2.5">
+                              <button
+                                type="button"
+                                onClick={() => openEditProduct(p)}
+                                className="flex w-full items-center gap-3 text-left"
+                              >
+                                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#D6EBDC] bg-[#FBFEFC]">
+                                  {p.image && (
+                                    <Image src={p.image} alt="" fill sizes="40px" className="object-cover" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-[#142A1C]">{p.name || '(tanpa nama)'}</p>
+                                  <p className="truncate text-xs text-[#7E9488]">{p.unit}</p>
+                                </div>
+                              </button>
+                            </td>
+                            <td className="px-4 py-2.5 text-[#4C6356]">{p.category || '-'}</td>
+                            <td className="px-4 py-2.5 whitespace-nowrap text-[#4C6356]">{formatIDR(p.price)}</td>
+                            <td className="px-4 py-2.5">
+                              {p.isPromo && (
+                                <span className="rounded-full bg-[#E1F4E7] px-2.5 py-1 text-xs font-medium text-[#22824E]">
+                                  Promo
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditProduct(p)}
+                                  className="rounded-lg p-1.5 text-[#1F3A28] hover:bg-[#E1F4E7]"
+                                  aria-label="Edit"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteProductConfirm(p.id, p.name)}
+                                  className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
+                                  aria-label="Hapus"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {tab === 'contact' && (
-            <div className="space-y-6">
+            <div className="mx-auto w-full max-w-3xl space-y-6">
+              <div className={cardClass}>
+                <h2 className="text-base font-semibold text-[#142A1C]">Logo</h2>
+                <p className="mt-1 text-sm text-[#4C6356]">
+                  Ditampilkan di header halaman utama dan footer. Kosongkan untuk memakai tulisan
+                  &quot;ladangpangan.id&quot; sebagai gantinya.
+                </p>
+                <div className="mt-4">
+                  <ImageField
+                    label="Logo ladangpangan.id"
+                    value={logoUrl}
+                    onChange={setLogoUrl}
+                    availableImages={availableImages}
+                  />
+                </div>
+              </div>
               <div className={cardClass}>
                 <h2 className="text-base font-semibold text-[#142A1C]">Kontak WhatsApp</h2>
                 <p className="mt-1 text-sm text-[#4C6356]">Nomor dan pesan default untuk semua tombol WhatsApp.</p>
@@ -756,7 +949,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           )}
 
           {tab === 'payment' && (
-            <div className={cardClass}>
+            <div className={`mx-auto w-full max-w-3xl ${cardClass}`}>
               <h2 className="text-base font-semibold text-[#142A1C]">Payment Gateway (Midtrans)</h2>
               <p className="mt-1 text-sm text-[#4C6356]">
                 Ambil Server Key &amp; Client Key dari dashboard Midtrans (Settings &gt; Access Keys). Gunakan
@@ -826,6 +1019,17 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           )}
         </form>
       </div>
+
+      {editingProduct && (
+        <ProductEditModal
+          product={editingProduct}
+          isNew={isNewProduct}
+          onChange={patchEditingProduct}
+          onSave={saveProductModal}
+          onClose={closeProductModal}
+          availableImages={availableImages}
+        />
+      )}
     </div>
   )
 }
