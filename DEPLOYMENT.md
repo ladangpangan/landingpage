@@ -114,13 +114,39 @@ database selector again, or SSL breaks, check in this order:
 5. `certbot certificates` — confirms a cert for this exact domain exists
    and isn't expired.
 
+## Database — self-hosted MongoDB on this VPS
+
+There's no external database (no Atlas, no managed service). MongoDB runs
+as its own container (`mongo`, image `mongo:7`) inside this same
+`docker-compose.yaml`, on the compose-internal network only — it is never
+published to a host port, so it isn't reachable from outside the VPS at
+all (safer than a cloud DB that has to allow-list `0.0.0.0/0` because this
+VPS has no static IP). The `landing` app container connects to it as
+`mongodb://<user>:<password>@mongo:27017/?authSource=admin`, built from the
+`MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` env vars.
+
+Its data lives in the `mongo_data` named Docker volume — same durability
+pattern as `uploads_data` above, which has already survived many redeploys.
+**`MONGO_ROOT_PASSWORD` must stay identical across every redeploy** — it's
+baked into the volume by Mongo on first init; changing it later doesn't
+break existing data but does break the app's ability to authenticate until
+it's set back to the original value. Keep the current value in a password
+manager, not just in your head.
+
+For extra safety beyond the volume (e.g. before any risky change), take a
+full VPS snapshot from the Hostinger panel — that backs up `mongo_data`
+along with everything else. There's no automated `mongodump` backup job
+today; add one if the data ever becomes business-critical enough to need
+point-in-time restores.
+
 ## Environment variables
 
 Passed via the `environment` field on the VPS deploy call (not committed
 anywhere):
-- `MONGO_URL` / `MONGO_DB_NAME` — optional; without these, the public page
-  still works fine with built-in defaults, but the `/admin` page can't
-  persist changes.
+- `MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` — credentials for the
+  self-hosted `mongo` container (see above). Must be set and must stay the
+  same on every redeploy.
+- `MONGO_DB_NAME` — optional, defaults to `ladang_landing`.
 - `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET` — required for `/admin` login.
 - `MIDTRANS_SERVER_KEY` / `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` /
   `MIDTRANS_IS_PRODUCTION` — optional at deploy time; can also be set from

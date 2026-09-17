@@ -1,13 +1,24 @@
 services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-landing_app}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD wajib diisi}
+
   landing:
     build: .
     restart: unless-stopped
+    depends_on:
+      - mongo
     ports:
       - "127.0.0.1:3001:3000"
     volumes:
       - uploads_data:/app/uploads
     environment:
-      MONGO_URL: ${MONGO_URL:-}
+      MONGO_URL: mongodb://${MONGO_ROOT_USER:-landing_app}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
       MONGO_DB_NAME: ${MONGO_DB_NAME:-ladang_landing}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-}
@@ -19,3 +30,4 @@ services:
 
 volumes:
   uploads_data:
+  mongo_data:
