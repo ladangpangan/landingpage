@@ -492,8 +492,11 @@ export default function Storefront({ settings }) {
               <span>Kabupaten Sidoarjo, Jawa Timur, Indonesia</span>
             </div>
           </div>
-          <div className="mt-8 border-t border-white/10 pt-5 text-center text-xs text-[#7E9488]">
-            © {new Date().getFullYear()} PT Ladang Pangan Indonesia. Seluruh hak cipta dilindungi.
+          <div className="mt-8 flex flex-col items-center gap-3 border-t border-white/10 pt-5 text-center text-xs text-[#7E9488] sm:flex-row sm:justify-between">
+            <span>© {new Date().getFullYear()} PT Ladang Pangan Indonesia. Seluruh hak cipta dilindungi.</span>
+            <Link href="/syarat-dan-ketentuan" className="text-[#AFD9BE] underline underline-offset-4 hover:text-white">
+              Syarat &amp; Ketentuan
+            </Link>
           </div>
         </footer>
       </div>
