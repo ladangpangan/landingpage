@@ -86,6 +86,13 @@ const ORDER_STATUS_CLASS = {
   refunded: 'bg-blue-50 text-blue-700 border-blue-200',
 }
 
+const SHIPPING_LABEL = {
+  internal: 'Kurir Internal',
+  gosend: 'GoSend',
+  grabexpress: 'GrabExpress',
+  lainnya: 'Lainnya',
+}
+
 function Field({ label, hint, children }) {
   return (
     <label className="block">
@@ -730,6 +737,10 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
                             </p>
                             <p className="mt-1 flex items-start gap-1.5 text-sm text-[#4C6356]">
                               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {o.customer?.address}
+                            </p>
+                            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#D6EBDC] bg-[#F7FBF8] px-2.5 py-1 text-xs font-medium text-[#1F3A28]">
+                              {SHIPPING_LABEL[o.shipping?.method] || 'Kurir Internal'}
+                              {o.shipping?.method === 'lainnya' && o.shipping?.note ? ` — ${o.shipping.note}` : ''}
                             </p>
                             {waDigits && (
                               <a

@@ -12,7 +12,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Body permintaan tidak valid.' }, { status: 400 })
   }
 
-  const { items, customer } = body || {}
+  const { items, customer, shipping } = body || {}
 
   if (!Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: 'Keranjang belanja kosong.' }, { status: 400 })
@@ -22,6 +22,13 @@ export async function POST(request) {
       { error: 'Nama, nomor WhatsApp, dan lokasi pengiriman wajib diisi.' },
       { status: 400 }
     )
+  }
+
+  const SHIPPING_METHODS = ['internal', 'gosend', 'grabexpress', 'lainnya']
+  const shippingMethod = SHIPPING_METHODS.includes(shipping?.method) ? shipping.method : 'internal'
+  const shippingNote = String(shipping?.note || '').trim().slice(0, 200)
+  if (shippingMethod === 'lainnya' && !shippingNote) {
+    return NextResponse.json({ error: 'Catatan pengiriman wajib diisi untuk metode "Lainnya".' }, { status: 400 })
   }
 
   const settings = await getLandingSettings()
@@ -77,16 +84,19 @@ export async function POST(request) {
       address: customer.address.trim().slice(0, 200),
     }
 
+    const shippingInfo = { method: shippingMethod, note: shippingNote }
+
     await createOrder({
       orderId,
       items: orderItems,
       customer: orderCustomer,
+      shipping: shippingInfo,
       grossAmount,
     })
 
     // Fire-and-forget: never let a slow/failing ERP sync delay or break
     // checkout. No-ops silently until ERP_INTEGRATION_URL/KEY are set.
-    syncOrderToErp({ orderId, items: orderItems, customer: orderCustomer, grossAmount })
+    syncOrderToErp({ orderId, items: orderItems, customer: orderCustomer, shipping: shippingInfo, grossAmount })
 
     return NextResponse.json({
       orderId,

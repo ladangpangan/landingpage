@@ -4,10 +4,17 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, ShieldCheck, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, Bike, Loader2, MoreHorizontal, ShieldCheck, ShoppingBag, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCart } from '@/lib/cart-context'
 import { formatIDR } from '@/lib/format'
+
+const SHIPPING_METHODS = [
+  { value: 'internal', label: 'Kurir Internal', desc: 'Diantar oleh tim kami', icon: Truck },
+  { value: 'gosend', label: 'GoSend', desc: 'Anda pesan sendiri saat barang siap', icon: Bike },
+  { value: 'grabexpress', label: 'GrabExpress', desc: 'Anda pesan sendiri saat barang siap', icon: Bike },
+  { value: 'lainnya', label: 'Lainnya', desc: 'Tulis catatan pengiriman', icon: MoreHorizontal },
+]
 
 export default function CheckoutClient({
   whatsappNumber,
@@ -20,6 +27,8 @@ export default function CheckoutClient({
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
+  const [shippingMethod, setShippingMethod] = useState('internal')
+  const [shippingNote, setShippingNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [snapReady, setSnapReady] = useState(false)
 
@@ -48,6 +57,10 @@ export default function CheckoutClient({
       toast.error('Nama Lengkap, Nomor WhatsApp, dan Lokasi Pengiriman wajib diisi.')
       return
     }
+    if (shippingMethod === 'lainnya' && !shippingNote.trim()) {
+      toast.error('Tulis catatan pengiriman untuk metode "Lainnya".')
+      return
+    }
     if (!midtransClientKey) {
       toast.error('Payment gateway belum dikonfigurasi oleh admin. Silakan pesan via WhatsApp.')
       return
@@ -65,6 +78,10 @@ export default function CheckoutClient({
         body: JSON.stringify({
           items: items.map((it) => ({ productId: it.productId, qty: it.qty })),
           customer: { name, phone, address },
+          shipping: {
+            method: shippingMethod,
+            note: shippingMethod === 'lainnya' ? shippingNote.trim() : '',
+          },
         }),
       })
       const data = await res.json()
@@ -188,6 +205,47 @@ export default function CheckoutClient({
               className="w-full resize-none rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none placeholder:text-[#7E9488] focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"
             />
           </label>
+        </section>
+
+        <section className="mt-5 space-y-3 rounded-2xl border border-[#D6EBDC] bg-white p-4 sm:p-5">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-[#7E9488]">Metode Pengiriman</h2>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {SHIPPING_METHODS.map((m) => {
+              const Icon = m.icon
+              const active = shippingMethod === m.value
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => setShippingMethod(m.value)}
+                  className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition ${
+                    active
+                      ? 'border-[#2FA966] bg-[#E1F4E7] ring-1 ring-[#2FA966]'
+                      : 'border-[#D6EBDC] bg-white hover:border-[#2FA966]/50'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${active ? 'text-[#22824E]' : 'text-[#7E9488]'}`} />
+                  <span className="text-sm font-medium text-[#142A1C]">{m.label}</span>
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-[#7E9488]">
+            {SHIPPING_METHODS.find((m) => m.value === shippingMethod)?.desc}
+            {shippingMethod !== 'internal' && (
+              <> — kami akan pesankan/konfirmasi kurirnya melalui WhatsApp setelah pesanan dikonfirmasi.</>
+            )}
+          </p>
+          {shippingMethod === 'lainnya' && (
+            <input
+              type="text"
+              required
+              value={shippingNote}
+              onChange={(e) => setShippingNote(e.target.value)}
+              placeholder="Contoh: JNE, Anteraja, ambil sendiri, dll."
+              className="w-full rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none placeholder:text-[#7E9488] focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"
+            />
+          )}
         </section>
 
         <button
