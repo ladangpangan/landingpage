@@ -1,26 +1,16 @@
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/admin-auth'
+import { requireAdmin } from '@/lib/admin-auth'
 import { getAdminLandingSettings, updateLandingSettings } from '@/lib/db'
 
-async function requireAdmin() {
-  const store = await cookies()
-  const token = store.get(SESSION_COOKIE)?.value
-  if (!verifySessionToken(token)) {
-    return { error: NextResponse.json({ error: 'Unauthorized.' }, { status: 401 }) }
-  }
-  return {}
-}
-
 export async function GET() {
-  const { error } = await requireAdmin()
+  const { admin, error } = await requireAdmin()
   if (error) return error
-  const settings = await getAdminLandingSettings()
+  const settings = await getAdminLandingSettings({ role: admin.role })
   return NextResponse.json(settings)
 }
 
 export async function PUT(request) {
-  const { error } = await requireAdmin()
+  const { admin, error } = await requireAdmin()
   if (error) return error
 
   let body
@@ -31,7 +21,7 @@ export async function PUT(request) {
   }
 
   try {
-    const settings = await updateLandingSettings(body || {})
+    const settings = await updateLandingSettings(body || {}, { role: admin.role })
     return NextResponse.json(settings)
   } catch (e) {
     return NextResponse.json({ error: e.message || 'Gagal menyimpan pengaturan.' }, { status: 400 })

@@ -1,8 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/admin-auth'
+import { getCurrentAdmin } from '@/lib/admin-auth'
 import { getAdminLandingSettings } from '@/lib/db'
 import SettingsForm from './settings-form'
 
@@ -39,11 +38,10 @@ function listLandingImages() {
 }
 
 export default async function AdminDashboardPage() {
-  const store = await cookies()
-  const token = store.get(SESSION_COOKIE)?.value
-  if (!verifySessionToken(token)) redirect('/admin')
+  const admin = await getCurrentAdmin()
+  if (!admin) redirect('/admin')
 
-  const settings = await getAdminLandingSettings()
+  const settings = await getAdminLandingSettings({ role: admin.role })
   const images = listLandingImages()
   const bundledImages = listBundledImages()
   const hasMongo = !!process.env.MONGO_URL
@@ -54,6 +52,7 @@ export default async function AdminDashboardPage() {
       availableImages={images}
       bundledImages={bundledImages}
       hasMongo={hasMongo}
+      admin={admin}
     />
   )
 }

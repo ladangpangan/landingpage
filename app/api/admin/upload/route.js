@@ -1,21 +1,11 @@
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/admin-auth'
+import { requireAdmin } from '@/lib/admin-auth'
 import { UPLOAD_DIR, ALLOWED_UPLOAD_TYPES } from '@/lib/uploads'
 
 const MAX_BYTES = 5 * 1024 * 1024
-
-async function requireAdmin() {
-  const store = await cookies()
-  const token = store.get(SESSION_COOKIE)?.value
-  if (!verifySessionToken(token)) {
-    return { error: NextResponse.json({ error: 'Unauthorized.' }, { status: 401 }) }
-  }
-  return {}
-}
 
 export async function GET() {
   const { error } = await requireAdmin()

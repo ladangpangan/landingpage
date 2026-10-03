@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSnapClient } from '@/lib/midtrans'
 import { getLandingSettings } from '@/lib/db'
-import { createOrder } from '@/lib/orders'
+import { createOrder, attachSnapToken, failOrderBeforePayment } from '@/lib/orders'
 import { syncOrderToErp } from '@/lib/erp-sync'
 
 export async function POST(request) {
@@ -41,7 +41,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Jumlah pesanan tidak valid.' }, { status: 400 })
     }
     const product = settings.products.find((p) => p.id === item.productId)
-    if (!product) {
+    if (!product || !(product.price > 0)) {
       return NextResponse.json({ error: 'Produk tidak ditemukan.' }, { status: 400 })
     }
     itemDetails.push({
@@ -57,12 +57,38 @@ export async function POST(request) {
       image: product.image,
       price: product.price,
       qty: quantity,
+      erpCode: product.erpCode || '',
     })
   }
 
   const grossAmount = itemDetails.reduce((sum, it) => sum + it.price * it.quantity, 0)
   const orderId = `LPI-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
 
+  const orderCustomer = {
+    name: customer.name.trim().slice(0, 50),
+    phone: customer.phone.trim().slice(0, 30),
+    address: customer.address.trim().slice(0, 200),
+  }
+  const shippingInfo = { method: shippingMethod, note: shippingNote }
+
+  // 1) Simpan pesanan dulu. Bila gagal, pembeli belum ditagih apa pun.
+  try {
+    await createOrder({
+      orderId,
+      items: orderItems,
+      customer: orderCustomer,
+      shipping: shippingInfo,
+      grossAmount,
+    })
+  } catch (error) {
+    console.error('[checkout] gagal menyimpan pesanan:', error?.message || error)
+    return NextResponse.json(
+      { error: 'Pesanan belum bisa disimpan. Silakan coba lagi sebentar lagi.' },
+      { status: 503 }
+    )
+  }
+
+  // 2) Baru buat transaksi pembayaran.
   try {
     const snap = await getSnapClient()
     const transaction = await snap.createTransaction({
@@ -72,27 +98,15 @@ export async function POST(request) {
       },
       item_details: itemDetails,
       customer_details: {
-        first_name: customer.name.trim().slice(0, 50),
-        phone: customer.phone.trim(),
-        billing_address: { address: customer.address.trim().slice(0, 200) },
+        first_name: orderCustomer.name,
+        phone: orderCustomer.phone,
+        billing_address: { address: orderCustomer.address },
       },
     })
 
-    const orderCustomer = {
-      name: customer.name.trim().slice(0, 50),
-      phone: customer.phone.trim(),
-      address: customer.address.trim().slice(0, 200),
-    }
-
-    const shippingInfo = { method: shippingMethod, note: shippingNote }
-
-    await createOrder({
-      orderId,
-      items: orderItems,
-      customer: orderCustomer,
-      shipping: shippingInfo,
-      grossAmount,
-    })
+    await attachSnapToken(orderId, transaction.token).catch((e) =>
+      console.error('[checkout] gagal menyimpan token pembayaran:', e?.message || e)
+    )
 
     // Fire-and-forget: never let a slow/failing ERP sync delay or break
     // checkout. No-ops silently until ERP_INTEGRATION_URL/KEY are set.
@@ -105,8 +119,9 @@ export async function POST(request) {
     })
   } catch (error) {
     console.error('Gagal membuat transaksi Midtrans:', error?.message || error)
+    await failOrderBeforePayment(orderId)
     return NextResponse.json(
-      { error: error?.message || 'Gagal membuat transaksi pembayaran.' },
+      { error: 'Gagal membuat transaksi pembayaran. Silakan coba lagi.' },
       { status: 500 }
     )
   }

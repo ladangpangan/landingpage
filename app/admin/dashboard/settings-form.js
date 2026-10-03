@@ -26,11 +26,13 @@ import {
   Search,
   Trash2,
   Upload,
+  Users,
   X,
   XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatIDR } from '@/lib/format'
+import AccountsPanel from './accounts-panel'
 
 let uid = 0
 const newProduct = () => ({
@@ -42,6 +44,7 @@ const newProduct = () => ({
   image: '',
   description: '',
   isPromo: false,
+  erpCode: '',
 })
 const newSlide = () => ({
   id: `slide-${Date.now()}-${uid++}`,
@@ -58,7 +61,8 @@ const NAV_ITEMS = [
   { id: 'products', label: 'Produk & Promo', icon: Package },
   { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
   { id: 'contact', label: 'Kontak & Banner', icon: Phone },
-  { id: 'payment', label: 'Payment Gateway', icon: CreditCard },
+  { id: 'payment', label: 'Payment Gateway', icon: CreditCard, ownerOnly: true },
+  { id: 'accounts', label: 'Akun', icon: Users },
 ]
 
 function formatBytes(bytes) {
@@ -69,21 +73,25 @@ function formatBytes(bytes) {
 }
 
 const ORDER_STATUS_LABEL = {
-  pending: 'Menunggu Pembayaran',
-  paid: 'Sudah Dibayar',
-  failed: 'Gagal',
-  cancelled: 'Dibatalkan',
-  expired: 'Kedaluwarsa',
-  refunded: 'Dikembalikan',
+  menunggu_bayar: 'Menunggu Bayar',
+  dibayar: 'Dibayar',
+  dikemas: 'Dikemas',
+  dikirim: 'Dikirim',
+  diterima: 'Diterima',
+  batal: 'Batal',
+  gagal: 'Gagal',
+  kedaluwarsa: 'Kedaluwarsa',
 }
 
 const ORDER_STATUS_CLASS = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  paid: 'bg-[#E1F4E7] text-[#22824E] border-[#2FA966]/30',
-  failed: 'bg-red-50 text-red-700 border-red-200',
-  cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
-  expired: 'bg-gray-100 text-gray-600 border-gray-200',
-  refunded: 'bg-blue-50 text-blue-700 border-blue-200',
+  menunggu_bayar: 'bg-amber-50 text-amber-700 border-amber-200',
+  dibayar: 'bg-[#E1F4E7] text-[#22824E] border-[#2FA966]/30',
+  dikemas: 'bg-[#E1F4E7] text-[#22824E] border-[#2FA966]/30',
+  dikirim: 'bg-blue-50 text-blue-700 border-blue-200',
+  diterima: 'bg-[#E1F4E7] text-[#22824E] border-[#2FA966]/30',
+  batal: 'bg-gray-100 text-gray-600 border-gray-200',
+  gagal: 'bg-red-50 text-red-700 border-red-200',
+  kedaluwarsa: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 const SHIPPING_LABEL = {
@@ -238,6 +246,13 @@ function ProductEditModal({ product, isNew, onChange, onSave, onClose, available
               placeholder="32000"
             />
           </Field>
+          <Field label="Kode ERP" hint="Dipakai untuk menyambungkan ke ERP nanti. Boleh dikosongkan.">
+            <input
+              className={inputClass}
+              value={product.erpCode || ''}
+              onChange={(e) => onChange({ erpCode: e.target.value })}
+            />
+          </Field>
           <Field label="Deskripsi">
             <textarea
               className={inputClass}
@@ -298,7 +313,8 @@ function StatCard({ label, value, tone = 'default' }) {
   )
 }
 
-export default function SettingsForm({ initialSettings, availableImages, bundledImages, hasMongo }) {
+export default function SettingsForm({ initialSettings, availableImages, bundledImages, hasMongo, admin }) {
+  const isOwner = admin?.role === 'owner'
   const router = useRouter()
   const [tab, setTab] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -502,8 +518,8 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
 
   const activeLabel = NAV_ITEMS.find((n) => n.id === tab)?.label || ''
   const promoCount = products.filter((p) => p.isPromo).length
-  const pendingOrdersCount = orders.filter((o) => o.status === 'pending').length
-  const paidOrdersCount = orders.filter((o) => o.status === 'paid').length
+  const pendingOrdersCount = orders.filter((o) => o.status === 'menunggu_bayar').length
+  const paidOrdersCount = orders.filter((o) => o.status === 'dibayar').length
   const productCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()
   const filteredProducts = products.filter((p) => {
     const matchesCategory = productCategoryFilter === 'all' || p.category === productCategoryFilter
@@ -528,7 +544,7 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
         <p className="text-xs text-[#7E9488]">Admin Panel</p>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => isOwner || !item.ownerOnly).map((item) => {
           const Icon = item.icon
           const active = tab === item.id
           return (
@@ -723,7 +739,7 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
                           </div>
                           <span
                             className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                              ORDER_STATUS_CLASS[o.status] || ORDER_STATUS_CLASS.pending
+                              ORDER_STATUS_CLASS[o.status] || ORDER_STATUS_CLASS.menunggu_bayar
                             }`}
                           >
                             {ORDER_STATUS_LABEL[o.status] || o.status}
@@ -1111,7 +1127,9 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
             </div>
           )}
 
-          {tab === 'payment' && (
+          {tab === 'accounts' && <AccountsPanel admin={admin} />}
+
+          {tab === 'payment' && isOwner && (
             <div className={`mx-auto w-full max-w-3xl ${cardClass}`}>
               <h2 className="text-base font-semibold text-[#142A1C]">Payment Gateway (Midtrans)</h2>
               <p className="mt-1 text-sm text-[#4C6356]">
