@@ -57,3 +57,13 @@ Tugas pertama:
 * Tahap 3 — Checkout: ongkir otomatis, gratis ongkir, voucher, pilih jadwal kirim dengan batas 40 kg.
 * Tahap 4 — Setelah bayar & admin: halaman sukses dengan nomor pesanan, lacak pesanan, admin ubah status, daftar kirim kurir, cetak label, notifikasi WhatsApp, kelola produk/paket/zona/voucher.
 * Tahap 5 — Siap rilis publik: uji lengkap lewat HP, uji pembayaran, pasang pelacak iklan (Meta Pixel, Google Analytics), keamanan tambahan, backup otomatis harian, ganti ke Midtrans PRODUCTION.
+
+## PERUBAHAN RENCANA (disetujui pemilik, 2026-10-05)
+
+* **Login pembeli dengan Google — pilihan, bukan kewajiban.** Teks di atas dibiarkan apa adanya; bagian ini menambahkan:
+   * Beli tanpa login tetap jalan (nama, WhatsApp, alamat saat checkout).
+   * Lacak pesanan tanpa login: masukkan nomor pesanan + nomor WhatsApp yang dipakai saat memesan.
+   * Login Google (opsional) untuk riwayat belanja, alamat tersimpan, dan "beli lagi". Pesanan yang dibuat saat sudah login otomatis masuk ke riwayat akun.
+   * Data dari Google hanya email, nama, foto profil. Tidak menambah teknologi baru (dibuat langsung di aplikasi yang ada).
+   * Dikerjakan di **Tahap 4**, bersama halaman lacak pesanan.
+   * Perlu dari pemilik: kunci masuk Google (Google Cloud Console, gratis) dan halaman Kebijakan Privasi; status aplikasi Google diubah ke "production" di Tahap 5.
