@@ -90,11 +90,13 @@ export function OrderCard({ order: o, onChanged, compact = false }) {
           {o.delivery && (
             <div className="mt-1.5 space-y-0.5 rounded-xl border border-lpi-line bg-lpi-bg px-3 py-2 text-xs text-lpi-ink">
               <p className="font-semibold">
-                Kirim {o.delivery.mode === 'sekarang' ? 'hari ini' : 'terjadwal'}: {o.delivery.date} · {o.delivery.slotLabel} ({o.delivery.start}–{o.delivery.end})
+                {o.delivery.mode === 'biteship'
+                  ? `Kurir instan Biteship: ${o.delivery.slotLabel}`
+                  : `Kirim ${o.delivery.mode === 'sekarang' ? 'hari ini' : 'terjadwal'}: ${o.delivery.date} · ${o.delivery.slotLabel} (${o.delivery.start}–${o.delivery.end})`}
               </p>
               {o.location && (
                 <p>
-                  {o.location.zoneName} · ±{o.location.distanceKm} km ·{' '}
+                  {o.location.zoneName}{o.location.distanceKm != null ? ` · ±${o.location.distanceKm} km` : ''} ·{' '}
                   <a href={`https://www.google.com/maps?q=${o.location.lat},${o.location.lng}`} target="_blank" rel="noopener noreferrer" className="font-medium text-lpi underline">
                     Lihat di peta
                   </a>

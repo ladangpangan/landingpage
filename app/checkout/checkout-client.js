@@ -54,6 +54,8 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
   const [mode, setMode] = useState('') // 'sekarang' | 'terjadwal'
   const [date, setDate] = useState('')
   const [slotId, setSlotId] = useState('')
+  const [shipMethod, setShipMethod] = useState('toko') // 'toko' | 'biteship'
+  const [courierKey, setCourierKey] = useState('')
 
   const [quote, setQuote] = useState(null)
   const [reload, setReload] = useState(0)
@@ -97,6 +99,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
             location,
             voucherCode,
             delivery: mode ? { mode, date: mode === 'terjadwal' ? date : undefined, slotId: mode === 'terjadwal' ? slotId : undefined } : null,
+            shipping: { method: shipMethod, courier: courierKey },
           }),
         })
         const data = await res.json()
@@ -111,7 +114,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
     }, 350)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, cartKey, location, voucherCode, mode, date, slotId, reload])
+  }, [hydrated, cartKey, location, voucherCode, mode, date, slotId, shipMethod, courierKey, reload])
 
   // Login Google bersifat pilihan: bila ada, isi nama dan tawarkan alamat tersimpan.
   useEffect(() => {
@@ -161,13 +164,22 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
   const zoneErr = quote?.zoneError && quote.zoneError.code !== 'lokasi' ? quote.zoneError : null
   const deliveryOk = !!quote?.delivery?.ok
   const deliveryErr = mode && quote?.delivery && !quote.delivery.ok ? quote.delivery.error : null
+  const viaB = shipMethod === 'biteship'
+  const chosenCourier = viaB ? quote?.biteship?.options?.find((o) => o.key === quote.biteship.chosen) || null : null
+  // Ongkir sudah diketahui: kurir toko (zona + jadwal) atau kurir instan yang dipilih.
+  const shippingKnown = viaB ? !!chosenCourier : zoneOk
   const ready =
-    !!name.trim() && !!phone.trim() && !!address.trim() && zoneOk && deliveryOk && !quote?.voucherError && !quoting && pricing?.total > 0
+    !!name.trim() && !!phone.trim() && !!address.trim() && shippingKnown && (viaB || deliveryOk) && !quote?.voucherError && !quoting && pricing?.total > 0
 
   async function handlePay() {
     if (!name.trim() || !phone.trim() || !address.trim()) return toast.error('Nama, nomor WhatsApp, dan alamat lengkap wajib diisi.')
-    if (!zoneOk) return toast.error('Bagikan lokasi Anda dulu supaya ongkir bisa dihitung.')
-    if (!deliveryOk) return toast.error('Pilih cara dan jam pengiriman.')
+    if (viaB) {
+      if (!location) return toast.error('Bagikan lokasi Anda dulu supaya tarif kurir bisa dihitung.')
+      if (!chosenCourier) return toast.error('Pilih kurir instan dulu.')
+    } else {
+      if (!zoneOk) return toast.error('Bagikan lokasi Anda dulu supaya ongkir bisa dihitung.')
+      if (!deliveryOk) return toast.error('Pilih cara dan jam pengiriman.')
+    }
     if (paymentGateway !== 'mayar') {
       if (!midtransClientKey) return toast.error('Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.')
       if (!snapReady || !window.snap) return toast.error('Pembayaran masih dimuat, coba lagi sebentar lagi.')
@@ -183,7 +195,8 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
           customer: { name, phone, address, note },
           location,
           voucherCode,
-          delivery: { mode, date: mode === 'terjadwal' ? date : undefined, slotId: mode === 'terjadwal' ? slotId : undefined },
+          delivery: viaB ? undefined : { mode, date: mode === 'terjadwal' ? date : undefined, slotId: mode === 'terjadwal' ? slotId : undefined },
+          shipping: { method: shipMethod, courier: courierKey, expectedFee: chosenCourier ? chosenCourier.price : undefined },
         }),
       })
       const data = await res.json()
@@ -350,6 +363,34 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
         </Section>
 
         <Section icon={CalendarDays} title="Pengiriman">
+          {quote?.biteship?.available && (
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {[['toko', 'Kurir Toko'], ['biteship', 'Kurir Instan']].map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setShipMethod(id)} className={`min-h-12 rounded-xl border-2 px-3 text-sm font-extrabold ${shipMethod === id ? 'border-lpi bg-lpi text-white' : 'border-lpi-line bg-white text-lpi-ink'}`}>
+                  {label}
+                </button>
+              ))}
+              <p className="col-span-2 text-xs text-lpi-muted">{shipMethod === 'toko' ? 'Kurir kami sendiri (Sidoarjo), pilih jadwal.' : 'Kurir instan seperti Gojek/Grab, dikirim sekarang. Ongkir sesuai tarif kurir.'}</p>
+            </div>
+          )}
+
+          {viaB && (
+            <div className="space-y-2">
+              {!location && <p className="rounded-xl bg-lpi-light px-4 py-3 text-sm text-lpi-ink">Bagikan lokasi Anda dulu (tombol di atas) untuk melihat kurir instan.</p>}
+              {quote?.biteship?.error && location && <p className="rounded-xl bg-[#FDECEC] px-4 py-3 text-sm text-[#9B2C2C]">{quote.biteship.error}</p>}
+              {(quote?.biteship?.options || []).map((o) => (
+                <button key={o.key} type="button" onClick={() => setCourierKey(o.key)} className={`flex w-full items-center justify-between gap-3 rounded-xl border-2 p-3 text-left ${courierKey === o.key ? 'border-lpi bg-lpi-light' : 'border-lpi-line bg-white'}`}>
+                  <span>
+                    <span className="block text-sm font-extrabold">{o.name} {o.serviceName}</span>
+                    <span className="block text-xs text-lpi-muted">{o.duration ? `Estimasi ${o.duration}` : o.description || 'Dikirim sekarang'}</span>
+                  </span>
+                  <span className="shrink-0 text-sm font-extrabold text-lpi">{formatIDR(o.price)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!viaB && (<>
           <div className="grid gap-2 sm:grid-cols-2">
             <button
               type="button"
@@ -428,6 +469,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
               Dikirim {quote.delivery.mode === 'sekarang' ? 'hari ini' : `${formatDay(quote.delivery.date).hari}, ${formatDay(quote.delivery.date).tanggal}`} · {quote.delivery.slotLabel} ({jam(quote.delivery.start)}–{jam(quote.delivery.end)})
             </p>
           )}
+          </>)}
         </Section>
 
         <Section icon={Tag} title="Kode voucher">
@@ -477,8 +519,8 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
             <div className="flex justify-between">
               <dt className="text-lpi-muted">Ongkos kirim</dt>
               <dd className="font-semibold">
-                {!zoneOk ? (
-                  <span className="text-lpi-muted">dihitung setelah lokasi dibagikan</span>
+                {!shippingKnown ? (
+                  <span className="text-lpi-muted">{viaB ? 'pilih kurir instan' : 'dihitung setelah lokasi dibagikan'}</span>
                 ) : pricing.freeShipping ? (
                   <span className="text-lpi">Gratis</span>
                 ) : (
@@ -492,12 +534,12 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
                 <dd className="font-semibold">− {formatIDR(pricing.shippingDiscount)}</dd>
               </div>
             )}
-            {zoneOk && !pricing.freeShipping && quote.zone.freeShippingMin - pricing.subtotalAfter > 0 && (
+            {!viaB && zoneOk && !pricing.freeShipping && quote.zone.freeShippingMin - pricing.subtotalAfter > 0 && (
               <p className="rounded-lg bg-lpi-light px-3 py-2 text-xs text-lpi">Tambah belanja {formatIDR(quote.zone.freeShippingMin - pricing.subtotalAfter)} lagi untuk gratis ongkir.</p>
             )}
             <div className="flex items-baseline justify-between border-t border-dashed border-lpi-line pt-3">
               <dt className="text-base font-extrabold">Total</dt>
-              <dd className="text-2xl font-extrabold text-lpi">{zoneOk ? formatIDR(pricing.total) : formatIDR(pricing?.subtotal ?? cartTotal)}</dd>
+              <dd className="text-2xl font-extrabold text-lpi">{shippingKnown ? formatIDR(pricing.total) : formatIDR(pricing?.subtotal ?? cartTotal)}</dd>
             </div>
           </dl>
         </Section>

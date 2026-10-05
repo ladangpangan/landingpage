@@ -364,3 +364,9 @@ Tanpa langkah ini toko tetap jalan; tombol "Masuk" hanya muncul bila kunci diisi
 4. Uji satu pesanan. Bila status tidak berubah menjadi Dibayar, buka admin → Payment Gateway → "Pemberitahuan terakhir dari penyedia" dan kirim isinya ke developer.
 5. Cara kembali ke Midtrans: pilih Midtrans di admin, Simpan. Pesanan Mayar yang masih menunggu tetap bisa dibayar lewat tautannya.
 Catatan: Mayar mewajibkan email pembeli; toko memakai email Google bila pembeli login, selain itu alamat sementara `<nomor-pesanan>@pesanan.ladangpangan.id`.
+
+
+## Kurir instan lewat Biteship (opsional)
+1. Daftar di biteship.com; ambil **API Key** (mulai dari kunci uji coba) dan isi saldo bila memakai kunci sungguhan (biaya kurir dipotong dari saldo; pembeli membayar ongkir ke toko).
+2. Admin (Owner) → Kurir Instan (Biteship): isi API Key, data penjemputan gudang (nama, telepon, alamat), tekan "Cek kurir tersedia", centang kurir instan yang diizinkan, nyalakan, Simpan. Titik gudang diambil dari menu Ongkir & Voucher.
+3. Cara mematikan: matikan saklar di tab yang sama; pembeli hanya melihat Kurir Toko.

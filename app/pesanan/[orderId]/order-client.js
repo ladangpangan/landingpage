@@ -175,7 +175,7 @@ export default function OrderClient({ orderId, accessKey, waLink, midtransClient
             {order.delivery && (
               <section className="rounded-2xl border border-lpi-line bg-white p-4 text-sm">
                 <h3 className="font-extrabold">Pengiriman</h3>
-                <p className="mt-1">{prettyDate(order.delivery.date)} · {order.delivery.slotLabel} ({order.delivery.start}–{order.delivery.end})</p>
+                <p className="mt-1">{order.delivery.mode === 'biteship' ? `Kurir instan: ${order.delivery.slotLabel} (dikirim sekarang setelah dikemas)` : `${prettyDate(order.delivery.date)} · ${order.delivery.slotLabel} (${order.delivery.start}–${order.delivery.end})`}</p>
                 <p className="mt-1 text-lpi-muted">{order.customer.name} · {order.customer.phone}</p>
                 <p className="text-lpi-muted">{order.customer.address}</p>
               </section>

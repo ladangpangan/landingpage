@@ -11,7 +11,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Body permintaan tidak valid.' }, { status: 400 })
   }
   try {
-    const ctx = await evaluateCheckout(body || {})
+    const ctx = await evaluateCheckout(body || {}, new Date(), { withBiteship: true })
     if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: 400 })
     const z = ctx.zoneResult
     return NextResponse.json({
@@ -25,6 +25,13 @@ export async function POST(request) {
         : { available: false, error: ctx.immediate.error },
       schedule: ctx.schedule,
       delivery: ctx.deliveryResolved,
+      shippingMethod: ctx.shippingMethod,
+      biteship: {
+        available: ctx.biteship.available,
+        error: ctx.biteship.error,
+        options: ctx.biteship.options.map((o) => ({ key: o.key, name: o.name, serviceName: o.serviceName, description: o.description, price: o.price, duration: o.duration })),
+        chosen: ctx.biteship.chosen ? ctx.biteship.chosen.key : null,
+      },
     })
   } catch (e) {
     console.error('[quote]', e?.message || e)
