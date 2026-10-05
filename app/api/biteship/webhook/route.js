@@ -8,16 +8,28 @@ import { applyBiteshipEvent, logPaymentEvent } from '@/lib/orders'
 // (Cadangan: token juga diterima lewat ?token= di alamat.)
 // (Bentuk kiriman Biteship belum terverifikasi; semua kiriman dicatat apa adanya untuk Owner.)
 export async function POST(request) {
+  // Isi kiriman dibaca longgar: kosong atau bukan JSON dianggap {}.
+  let body = {}
+  try {
+    const text = await request.text()
+    if (text.trim()) body = JSON.parse(text)
+  } catch {
+    body = {}
+  }
+  if (!body || typeof body !== 'object') body = {}
+
+  // Ping pemasangan dari Biteship (isi kosong / tanpa data pesanan) harus dijawab "ok" supaya webhook
+  // bisa didaftarkan. Ping seperti itu tidak mengubah apa pun, jadi aman dijawab tanpa token.
+  const looksLikeEvent = ['order_id', 'id', 'status', 'courier_tracking_id', 'reference_id', 'order_reference_id'].some((k) => body[k])
+  if (!looksLikeEvent) return NextResponse.json({ ok: true, received: true })
+
   const cfg = await getBiteshipConfig().catch(() => null)
   if (!cfg?.webhookToken) return NextResponse.json({ error: 'Server belum dikonfigurasi.' }, { status: 500 })
   const token = request.headers.get('x-webhook-token') || new URL(request.url).searchParams.get('token') || ''
-  if (!verifyWebhookToken(token, cfg.webhookToken)) return NextResponse.json({ error: 'Token tidak valid.' }, { status: 401 })
-  let body
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Body tidak valid.' }, { status: 400 })
-  }
+  const authorized = verifyWebhookToken(token, cfg.webhookToken)
+  // Kiriman yang membawa data pesanan WAJIB membawa token yang benar.
+  if (!authorized) return NextResponse.json({ error: 'Token tidak valid.' }, { status: 401 })
+
   const parsed = parseBiteshipWebhook(body)
   let result
   try {
