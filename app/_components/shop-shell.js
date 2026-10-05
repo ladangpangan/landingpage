@@ -191,6 +191,9 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
         </div>
         <div className="mt-7 flex flex-col items-center gap-3 border-t border-white/20 pt-5 text-center text-xs text-lpi-light/80 sm:flex-row sm:justify-between">
           <span>© {new Date().getFullYear()} PT Ladang Pangan Indonesia</span>
+          <Link href="/lacak" className="underline underline-offset-4 hover:text-white">
+            Lacak Pesanan
+          </Link>
           <Link href="/syarat-dan-ketentuan" className="underline underline-offset-4 hover:text-white">
             Syarat &amp; Ketentuan
           </Link>

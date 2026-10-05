@@ -8,6 +8,16 @@ import { reserveSlot, releaseSlot } from '@/lib/delivery'
 import { reserveVoucher, releaseVoucher } from '@/lib/vouchers'
 import { createOrder, attachSnapToken, failOrderBeforePayment } from '@/lib/orders'
 import { syncOrderToErp } from '@/lib/erp-sync'
+import { accessKey } from '@/lib/order-access'
+
+// Kunci akses untuk halaman pesanan; jangan sampai gagal membuat pembayaran hanya karena ini.
+function safeAccessKey(orderId) {
+  try {
+    return accessKey(orderId, process.env.ADMIN_SESSION_SECRET || '')
+  } catch {
+    return null
+  }
+}
 
 const BUSY = 'Pesanan belum bisa diproses. Silakan coba lagi sebentar lagi.'
 
@@ -174,6 +184,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       orderId,
+      accessKey: safeAccessKey(orderId),
       token: transaction.token,
       redirectUrl: transaction.redirect_url,
     })

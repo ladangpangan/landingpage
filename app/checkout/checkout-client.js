@@ -168,15 +168,20 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
         throw new Error(data.error || 'Gagal membuat transaksi.')
       }
 
+      // Pesanan sudah tersimpan: apa pun hasil jendela bayar, pembeli diantar ke halaman pesanannya
+      // (di sana ia bisa melanjutkan bayar, membatalkan, atau melacak).
+      const goToOrder = () => {
+        clearCart()
+        router.push(`/pesanan/${encodeURIComponent(data.orderId)}${data.accessKey ? `?k=${data.accessKey}` : ''}`)
+      }
       window.snap.pay(data.token, {
-        onSuccess: () => {
-          toast.success('Pembayaran berhasil! Terima kasih sudah memesan.')
-          clearCart()
-          router.push('/')
+        onSuccess: goToOrder,
+        onPending: goToOrder,
+        onError: () => {
+          toast.error('Pembayaran gagal. Silakan coba lagi dari halaman pesanan.')
+          goToOrder()
         },
-        onPending: () => toast.info('Pembayaran tertunda. Selesaikan pembayaran Anda.'),
-        onError: () => toast.error('Pembayaran gagal. Silakan coba lagi.'),
-        onClose: () => toast.message('Anda menutup jendela pembayaran sebelum selesai.'),
+        onClose: goToOrder,
       })
     } catch (error) {
       toast.error(error.message || 'Terjadi kesalahan, silakan coba lagi.')
