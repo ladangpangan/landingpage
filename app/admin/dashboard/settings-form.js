@@ -19,6 +19,7 @@ import {
   Menu,
   MessageCircle,
   Package,
+  Boxes,
   Pencil,
   Phone,
   Plus,
@@ -34,6 +35,7 @@ import {
 import { toast } from 'sonner'
 import { formatIDR } from '@/lib/format'
 import AccountsPanel from './accounts-panel'
+import BundlesPanel from './bundles-panel'
 
 let uid = 0
 const newProduct = () => ({
@@ -61,6 +63,7 @@ const NAV_ITEMS = [
   { id: 'orders', label: 'Pesanan', icon: ClipboardList },
   { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
   { id: 'products', label: 'Produk & Promo', icon: Package },
+  { id: 'bundles', label: 'Paket Hemat & Masak', icon: Boxes },
   { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
   { id: 'contact', label: 'Pengaturan Toko', icon: Phone },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard, ownerOnly: true },
@@ -1223,6 +1226,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
               </div>
             </div>
           )}
+
+          {tab === 'bundles' && <BundlesPanel ImageField={ImageField} availableImages={availableImages} />}
 
           {tab === 'accounts' && <AccountsPanel admin={admin} />}
 
