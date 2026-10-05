@@ -8,6 +8,17 @@ import { reserveSlot, releaseSlot } from '@/lib/delivery'
 import { reserveVoucher, releaseVoucher } from '@/lib/vouchers'
 import { createOrder, attachSnapToken, failOrderBeforePayment } from '@/lib/orders'
 import { syncOrderToErp } from '@/lib/erp-sync'
+import { accessKey } from '@/lib/order-access'
+import { getCurrentCustomer } from '@/lib/customer-session'
+
+// Kunci akses untuk halaman pesanan; jangan sampai gagal membuat pembayaran hanya karena ini.
+function safeAccessKey(orderId) {
+  try {
+    return accessKey(orderId, process.env.ADMIN_SESSION_SECRET || '')
+  } catch {
+    return null
+  }
+}
 
 const BUSY = 'Pesanan belum bisa diproses. Silakan coba lagi sebentar lagi.'
 
@@ -68,6 +79,8 @@ export async function POST(request) {
   }
   const deliveryInfo = { mode: d.mode, date: d.date, slotId: d.slotId, slotLabel: d.slotLabel, start: d.start, end: d.end }
   const shippingInfo = { method: 'internal', note: `${z.zone.name} (${z.distanceKm} km), ${d.date} ${d.slotLabel}` }
+
+  const loggedIn = await getCurrentCustomer().catch(() => null)
 
   // 1) Tahan stok, kapasitas slot kirim, dan kuota voucher (masing-masing atomik).
   //    Bila salah satu gagal, yang sudah ditahan dikembalikan. Pembeli belum ditagih apa pun.
@@ -130,7 +143,7 @@ export async function POST(request) {
       shipping: shippingInfo,
       grossAmount,
       stockReservation: stock.reserved,
-      extra: { weightKg: ctx.weightKg, pricing: ctx.pricing, delivery: deliveryInfo, location, slotReservation: slotRes, voucherCode },
+      extra: { weightKg: ctx.weightKg, pricing: ctx.pricing, delivery: deliveryInfo, location, slotReservation: slotRes, voucherCode, customerId: loggedIn?.id || null },
     })
   } catch (error) {
     console.error('[checkout] gagal menyimpan pesanan:', error?.message || error)
@@ -174,6 +187,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       orderId,
+      accessKey: safeAccessKey(orderId),
       token: transaction.token,
       redirectUrl: transaction.redirect_url,
     })

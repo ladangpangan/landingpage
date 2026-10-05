@@ -346,3 +346,12 @@ customer or retry — this is a one-shot best-effort push, not a queue.
   debugging this app — they're shared infrastructure on the same VPS.
 - Don't assume a relative bind-mount in docker-compose.yaml will find repo
   files on the VPS — bake anything needed into the image instead.
+
+
+## Login Google pembeli (Tahap 4B, opsional)
+Tanpa langkah ini toko tetap jalan; tombol "Masuk" hanya muncul bila kunci diisi.
+1. Google Cloud Console → buat proyek → "APIs & Services" → "OAuth consent screen" (External, isi nama aplikasi, email, tautan Kebijakan Privasi `https://marketplace.ladangpangan.id/kebijakan-privasi`).
+2. "Credentials" → "Create credentials" → "OAuth client ID" → Web application. Authorized redirect URI: `https://marketplace.ladangpangan.id/api/auth/google/callback`.
+3. Isi variabel di VPS: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SITE_URL=https://marketplace.ladangpangan.id`, lalu pasang ulang.
+4. Selama status aplikasi "Testing", hanya email yang didaftarkan sebagai test user yang bisa masuk. Ubah ke "In production" di Tahap 5 (sebelum rilis publik).
+5. Cara kembali: kosongkan `GOOGLE_CLIENT_ID`; tombol masuk hilang, belanja tanpa login tidak terpengaruh.

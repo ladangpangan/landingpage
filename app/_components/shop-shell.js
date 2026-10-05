@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import SafeImage from './safe-image'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { MapPin, MessageCircle, Search, ShoppingCart, ShieldCheck, X } from 'lucide-react'
+import { MapPin, MessageCircle, Search, ShoppingCart, ShieldCheck, User, X } from 'lucide-react'
 import { useCart } from '@/lib/cart-context'
 import { formatIDR } from '@/lib/format'
 import { makeWaLink } from '@/lib/wa'
@@ -111,6 +111,11 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
   const { count } = useCart()
   const [cartOpen, setCartOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
+  const [acct, setAcct] = useState(null) // { enabled, customer }
+
+  useEffect(() => {
+    fetch('/api/akun/me', { cache: 'no-store' }).then((r) => r.json()).then(setAcct).catch(() => {})
+  }, [])
   const waLink = makeWaLink(settings)
   const controlled = typeof onSearchChange === 'function'
 
@@ -141,6 +146,13 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
                 </span>
               )}
             </Link>
+            <div className="flex items-center gap-2">
+            {acct?.enabled && (
+              <Link href="/akun" aria-label="Akun saya" className="flex h-12 items-center gap-2 rounded-xl border border-lpi-line bg-white px-3 text-sm font-bold text-lpi">
+                <User className="h-5 w-5" />
+                <span className="hidden sm:inline">{acct.customer ? acct.customer.name.split(' ')[0] || 'Akun' : 'Masuk'}</span>
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => setCartOpen(true)}
@@ -154,6 +166,7 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
                 </span>
               )}
             </button>
+            </div>
           </div>
           <form onSubmit={submitSearch} className="relative mt-3">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-lpi-muted" />
@@ -191,8 +204,14 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
         </div>
         <div className="mt-7 flex flex-col items-center gap-3 border-t border-white/20 pt-5 text-center text-xs text-lpi-light/80 sm:flex-row sm:justify-between">
           <span>© {new Date().getFullYear()} PT Ladang Pangan Indonesia</span>
+          <Link href="/lacak" className="underline underline-offset-4 hover:text-white">
+            Lacak Pesanan
+          </Link>
           <Link href="/syarat-dan-ketentuan" className="underline underline-offset-4 hover:text-white">
             Syarat &amp; Ketentuan
+          </Link>
+          <Link href="/kebijakan-privasi" className="underline underline-offset-4 hover:text-white">
+            Kebijakan Privasi
           </Link>
         </div>
       </footer>

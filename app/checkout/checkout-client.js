@@ -44,6 +44,8 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [note, setNote] = useState('')
+  const [me, setMe] = useState(null) // { enabled, customer }
+  const [saveAddr, setSaveAddr] = useState(true)
 
   const [location, setLocation] = useState(null) // { lat, lng }
   const [locState, setLocState] = useState('idle') // idle | loading | ok | denied | error
@@ -111,6 +113,26 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, cartKey, location, voucherCode, mode, date, slotId, reload])
 
+  // Login Google bersifat pilihan: bila ada, isi nama dan tawarkan alamat tersimpan.
+  useEffect(() => {
+    fetch('/api/akun/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        setMe(d)
+        if (d.customer?.name) setName((cur) => cur || d.customer.name)
+      })
+      .catch(() => {})
+  }, [])
+
+  function pickSavedAddress(a) {
+    setName(a.name)
+    setPhone(a.phone)
+    setAddress(a.address)
+    setLocation({ lat: a.lat, lng: a.lng })
+    setLocState('ok')
+    setSaveAddr(false)
+  }
+
   function askLocation() {
     if (!navigator.geolocation) {
       setLocState('error')
@@ -168,15 +190,27 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
         throw new Error(data.error || 'Gagal membuat transaksi.')
       }
 
+      if (me?.customer && saveAddr) {
+        fetch('/api/akun/alamat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: 'Alamat', name, phone, address, lat: location.lat, lng: location.lng }),
+        }).catch(() => {})
+      }
+      // Pesanan sudah tersimpan: apa pun hasil jendela bayar, pembeli diantar ke halaman pesanannya
+      // (di sana ia bisa melanjutkan bayar, membatalkan, atau melacak).
+      const goToOrder = () => {
+        clearCart()
+        router.push(`/pesanan/${encodeURIComponent(data.orderId)}${data.accessKey ? `?k=${data.accessKey}` : ''}`)
+      }
       window.snap.pay(data.token, {
-        onSuccess: () => {
-          toast.success('Pembayaran berhasil! Terima kasih sudah memesan.')
-          clearCart()
-          router.push('/')
+        onSuccess: goToOrder,
+        onPending: goToOrder,
+        onError: () => {
+          toast.error('Pembayaran gagal. Silakan coba lagi dari halaman pesanan.')
+          goToOrder()
         },
-        onPending: () => toast.info('Pembayaran tertunda. Selesaikan pembayaran Anda.'),
-        onError: () => toast.error('Pembayaran gagal. Silakan coba lagi.'),
-        onClose: () => toast.message('Anda menutup jendela pembayaran sebelum selesai.'),
+        onClose: goToOrder,
       })
     } catch (error) {
       toast.error(error.message || 'Terjadi kesalahan, silakan coba lagi.')
@@ -232,10 +266,33 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
 
         <Section title="Data penerima">
           <div className="space-y-3">
+            {me?.customer?.addresses?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-lpi-ink">Pakai alamat tersimpan</p>
+                <div className="flex flex-wrap gap-2">
+                  {me.customer.addresses.map((a) => (
+                    <button key={a.id} type="button" onClick={() => pickSavedAddress(a)} className="min-h-11 rounded-xl border-2 border-lpi bg-white px-4 text-sm font-bold text-lpi hover:bg-lpi-light">
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {me?.enabled && !me.customer && (
+              <a href="/api/auth/google?returnTo=/checkout" className="block rounded-xl bg-lpi-light px-4 py-3 text-sm text-lpi-ink">
+                <b>Sudah punya akun?</b> Masuk dengan Google untuk memakai alamat tersimpan. (Boleh dilewati, belanja tanpa login tetap bisa.)
+              </a>
+            )}
             <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama lengkap" autoComplete="name" maxLength={50} />
             <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Nomor WhatsApp, mis. 0812xxxxxxx" inputMode="tel" autoComplete="tel" maxLength={30} />
             <textarea className={inputClass} rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Alamat lengkap (jalan, nomor, RT/RW, patokan)" maxLength={200} />
             <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan untuk kurir (boleh kosong)" maxLength={200} />
+            {me?.customer && (
+              <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+                <input type="checkbox" checked={saveAddr} onChange={(e) => setSaveAddr(e.target.checked)} className="h-5 w-5 accent-[#1E5A3A]" />
+                Simpan alamat ini untuk belanja berikutnya
+              </label>
+            )}
           </div>
         </Section>
 
