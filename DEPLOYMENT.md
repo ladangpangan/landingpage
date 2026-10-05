@@ -1,5 +1,57 @@
 # Deployment — VPS (Hostinger KVM 1)
 
+> **PEMBARUAN (Oktober 2026): marketplace kini berjalan di VPS KVM 2, bukan KVM 1.**
+> Bagian "Infrastructure", "Redeploying", dan "Nginx vhost" di bawah menggambarkan
+> KVM 1 (Nginx + Odoo) dan sudah tidak dipakai untuk marketplace. Yang berlaku
+> sekarang ada di bagian "VPS KVM 2 (aktif)" ini.
+
+## VPS KVM 2 (aktif)
+
+- **VPS**: Hostinger KVM 2, id `1956504`, hostname `srv1956504.hstgr.cloud`, IP
+  `148.230.102.34`, Ubuntu 24.04 dengan Docker + Traefik.
+- **DNS**: `marketplace.ladangpangan.id` (A record) mengarah ke IP ini.
+- **Traefik** (proyek Docker `traefik`) memegang port 80/443 dan menerbitkan
+  HTTPS (Let's Encrypt). Aplikasi ini hanya perlu label Traefik di
+  `docker-compose.yaml` (sudah ada). Jangan menambah proxy lain.
+- Server ini juga menjalankan aplikasi lain (ERP, n8n, dll.) sebagai proyek
+  Docker terpisah. Jangan menghentikan atau menghapusnya. Port 3001 dipakai ERP;
+  marketplace memakai 3002 (hanya localhost).
+- Proyek Docker marketplace bernama `ladang-landing` (service `mongo` dan
+  `landing`, volume `mongo_data` dan `uploads_data`).
+
+### Cara memasang versi baru (lewat konektor Hostinger)
+
+1. Pastikan kode sudah digabung ke `main` **dan** cabang `master` disamakan
+   dengan `main` (alat Hostinger membaca `docker-compose.yaml` dari alamat repo;
+   `master` dipertahankan sama dengan `main`).
+2. Panggil `vps_docker_create` dengan `virtualMachineId=1956504`,
+   `project_name="ladang-landing"`, `content="https://github.com/ladangpangan/landingpage"`
+   dan `environment` berisi SEMUA variabel (penuh, bukan sebagian; lihat daftar di
+   bawah). Alat ini mengganti proyek dengan nama yang sama, volume data tetap.
+3. **Jangan** mengirim isi compose mentah (`content` berupa YAML): cara itu
+   TIDAK membangun ulang aplikasi, hanya memakai ulang gambar lama. Itu sebabnya
+   pemasangan pertama Tahap 1-2 sempat tidak mengubah kode. Mengisi `image:` dengan
+   tag yang belum ada juga gagal dan sempat membuat database berhenti
+   (pulihkan dengan `vps_docker_start`).
+4. Cek `vps_docker_containers` dan `vps_docker_logs`: container `landing` harus
+   baru dibuat dan log memuat proses build.
+5. Jangan menulis nilai rahasia ke repo atau chat. `vps_docker_get` menampilkan
+   `environment` apa adanya; baca hanya bila perlu.
+
+Variabel `environment`: `MONGO_ROOT_USER`, `MONGO_ROOT_PASSWORD` (harus tetap
+sama), `MONGO_DB_NAME`, `ADMIN_OWNER_EMAIL`, `ADMIN_PASSWORD`,
+`ADMIN_SESSION_SECRET`, `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`,
+`MIDTRANS_IS_PRODUCTION`, `ERP_INTEGRATION_URL`, `ERP_INTEGRATION_KEY`.
+
+### Backup dan kembali ke versi lama
+
+- Backup: snapshot KVM 2 lewat hPanel atau `vps_snapshots_create` (menimpa
+  snapshot sebelumnya). Memulihkan snapshot mengembalikan SELURUH server
+  (termasuk ERP dan n8n), jadi gunakan sebagai pilihan terakhir.
+- Kembali ke kode lama: arahkan `master` dan `main` ke commit lama yang baik,
+  lalu pasang ulang dengan langkah di atas. Struktur data baru bersifat
+  menambah, jadi versi lama tetap bisa membaca produknya.
+
 This app runs on the **same VPS as Odoo**, not on its own server. That VPS
 already has a system-level Nginx acting as the single public gateway on
 ports 80/443, so this app's container never touches those ports directly.

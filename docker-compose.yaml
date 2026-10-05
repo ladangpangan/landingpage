@@ -14,7 +14,8 @@ services:
     depends_on:
       - mongo
     ports:
-      - "127.0.0.1:3001:3000"
+      # Hanya untuk pengecekan dari dalam VPS; trafik publik lewat Traefik.
+      - "127.0.0.1:3002:3000"
     volumes:
       - uploads_data:/app/uploads
     environment:
@@ -28,6 +29,14 @@ services:
       MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
       ERP_INTEGRATION_URL: ${ERP_INTEGRATION_URL:-}
       ERP_INTEGRATION_KEY: ${ERP_INTEGRATION_KEY:-}
+    # Traefik (sudah terpasang di VPS KVM 2) mengurus HTTPS dan arah trafik.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ladang-landing.rule=Host(`marketplace.ladangpangan.id`)"
+      - "traefik.http.routers.ladang-landing.entrypoints=websecure"
+      - "traefik.http.routers.ladang-landing.tls=true"
+      - "traefik.http.routers.ladang-landing.tls.certresolver=letsencrypt"
+      - "traefik.http.services.ladang-landing.loadbalancer.server.port=3000"
 
 volumes:
   uploads_data:
