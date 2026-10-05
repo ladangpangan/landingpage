@@ -373,4 +373,4 @@ Catatan: Mayar mewajibkan email pembeli; toko memakai email Google bila pembeli 
 
 Memanggil kurir dan status otomatis (Biteship):
 - Setelah pesanan Dibayar lalu Dikemas, admin menekan **Panggil Kurir** di kartu pesanan. Bila gagal (mis. "Area tidak terjangkau") pesan Biteship tampil dan tombol bisa ditekan lagi.
-- Webhook: di admin tab Kurir Instan isi **Webhook Token** (teks acak), Simpan, lalu daftarkan `https://marketplace.ladangpangan.id/api/biteship/webhook?token=<token>` di dashboard Biteship. Bila status tidak bergerak otomatis, lihat "Kabar terakhir dari Biteship" di tab itu dan kirim isinya ke developer.
+- Webhook: di admin tab Kurir Instan isi **Webhook Token** (teks acak), Simpan, lalu daftarkan di dashboard Biteship (Integrasi → Webhook): URL `https://marketplace.ladangpangan.id/api/biteship/webhook`, Headers Signature Key `x-webhook-token`, Headers Signature Secret = token yang sama, event pesanan semua. (Cadangan: `?token=<token>` di alamat.) Bila status tidak bergerak otomatis, lihat "Kabar terakhir dari Biteship" di tab itu dan kirim isinya ke developer.
