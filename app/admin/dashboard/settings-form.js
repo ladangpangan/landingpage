@@ -196,7 +196,7 @@ function ImageField({ label, value, onChange, availableImages }) {
   )
 }
 
-function ProductEditModal({ product, isNew, onChange, onSave, onClose, availableImages }) {
+function ProductEditModal({ product, isNew, onChange, onSave, onClose, availableImages, saving}) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -300,9 +300,10 @@ function ProductEditModal({ product, isNew, onChange, onSave, onClose, available
           <button
             type="button"
             onClick={onSave}
-            className="rounded-xl bg-[#2FA966] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#22824E]"
+            disabled={saving}
+            className="rounded-xl bg-[#2FA966] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#22824E] disabled:opacity-60"
           >
-            {isNew ? 'Tambah' : 'Simpan Perubahan'}
+            {saving ? 'Menyimpan...' : isNew ? 'Tambah' : 'Simpan Perubahan'}
           </button>
         </div>
       </div>
@@ -344,6 +345,7 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
   const [hasServerKey, setHasServerKey] = useState(initialSettings.hasMidtransServerKey)
   const [serverKeyPreview, setServerKeyPreview] = useState(initialSettings.midtransServerKeyPreview)
   const [saving, setSaving] = useState(false)
+  const [savingProducts, setSavingProducts] = useState(false)
   const [orders, setOrders] = useState([])
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [productSearch, setProductSearch] = useState('')
@@ -417,8 +419,31 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
     }
   }
 
-  function removeProduct(id) {
-    setProducts((prev) => prev.filter((p) => p.id !== id))
+  // Produk langsung disimpan ke server (tidak menunggu tombol Simpan di atas).
+  // Mengembalikan true bila berhasil; daftar di layar diganti dengan versi server.
+  async function persistProducts(list, okMessage) {
+    setSavingProducts(true)
+    try {
+      const res = await fetch('/api/admin/landing-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: list }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan produk.')
+      setProducts(data.products || list)
+      toast.success(okMessage)
+      return true
+    } catch (error) {
+      toast.error(error.message || 'Gagal menyimpan produk. Perubahan belum tersimpan.')
+      return false
+    } finally {
+      setSavingProducts(false)
+    }
+  }
+
+  async function removeProduct(id) {
+    await persistProducts(products.filter((p) => p.id !== id), 'Produk dihapus.')
   }
 
   function openNewProduct() {
@@ -435,17 +460,21 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
   function patchEditingProduct(patch) {
     setEditingProduct((prev) => ({ ...prev, ...patch }))
   }
-  function saveProductModal() {
+  async function saveProductModal() {
     if (!editingProduct.name.trim()) {
       toast.error('Nama produk tidak boleh kosong.')
       return
     }
-    if (isNewProduct) {
-      setProducts((prev) => [...prev, editingProduct])
-    } else {
-      setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
+    if (!(Number(editingProduct.price) > 0)) {
+      toast.error('Harga produk harus lebih dari 0.')
+      return
     }
-    setEditingProduct(null)
+    const next = isNewProduct
+      ? [...products, editingProduct]
+      : products.map((p) => (p.id === editingProduct.id ? editingProduct : p))
+    // Jendela tetap terbuka bila gagal supaya isian tidak hilang.
+    const ok = await persistProducts(next, isNewProduct ? 'Produk ditambahkan dan tersimpan.' : 'Perubahan produk tersimpan.')
+    if (ok) setEditingProduct(null)
   }
   function deleteProductConfirm(id, name) {
     if (window.confirm(`Hapus produk "${name || 'ini'}"?`)) {
@@ -1224,6 +1253,7 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
           onChange={patchEditingProduct}
           onSave={saveProductModal}
           onClose={closeProductModal}
+          saving={savingProducts}
           availableImages={availableImages}
         />
       )}
