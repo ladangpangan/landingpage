@@ -53,3 +53,59 @@ test('data penjemputan wajib lengkap; pengaturan dibersihkan', () => {
   assert.equal(s.origin.contactName, 'Gudang')
   assert.equal(sanitizeBiteshipSettings({}).enabled, undefined)
 })
+
+import { buildOrderBody, extractBiteshipOrder, parseBiteshipWebhook, orderStatusFor, courierProblem, canBookCourier, verifyWebhookToken } from '../lib/biteship.js'
+
+test('pesan kurir: kontak gudang, tujuan, koordinat, kurir terpilih, dan isi', () => {
+  const order = {
+    orderId: 'LPI-1-AB', weightKg: 2.5,
+    customer: { name: 'Ibu Sari', phone: '0812-3456', address: 'Jl. Mawar 5', note: 'Titip satpam' },
+    location: { lat: -7.43, lng: 112.73 },
+    shipping: { method: 'biteship', courier: { company: 'gojek', type: 'instant' } },
+    items: [{ name: 'Karkas', qty: 2, price: 32000 }, { name: 'Ceker', qty: 1, price: 10000 }],
+  }
+  const b = buildOrderBody({ order, origin: { contactName: 'Gudang', contactPhone: '08', address: 'Jl. Gudang', note: 'Pintu samping' }, warehouse: { lat: -7.4478, lng: 112.7183 } })
+  assert.equal(b.courier_company, 'gojek')
+  assert.equal(b.courier_type, 'instant')
+  assert.equal(b.delivery_type, 'now')
+  assert.equal(b.reference_id, 'LPI-1-AB')
+  assert.deepEqual(b.destination_coordinate, { latitude: -7.43, longitude: 112.73 })
+  assert.deepEqual(b.origin_coordinate, { latitude: -7.4478, longitude: 112.7183 })
+  assert.equal(b.destination_contact_phone, '08123456')
+  assert.equal(b.items[0].weight, 2500)
+  assert.equal(b.items[0].value, 74000)
+  assert.match(b.items[0].description, /2x Karkas/)
+})
+
+test('balasan order dibaca: id, resi, tautan lacak, harga', () => {
+  const r = extractBiteshipOrder({ success: true, id: 'bs1', price: 21000, status: 'confirmed', courier: { tracking_id: 't1', waybill_id: 'w1', link: 'https://l', driver_name: 'Budi' } })
+  assert.deepEqual([r.id, r.trackingId, r.waybillId, r.link, r.price, r.driverName], ['bs1', 't1', 'w1', 'https://l', 21000, 'Budi'])
+  assert.equal(extractBiteshipOrder(null).id, '')
+  assert.equal(extractBiteshipOrder({ data: { id: 'x' } }).id, 'x')
+})
+
+test('webhook status dibaca dan dipetakan ke status pesanan', () => {
+  const p = parseBiteshipWebhook({ event: 'order.status', order_id: 'bs1', status: 'Picked', courier_tracking_id: 't1', courier_driver_name: 'Budi', courier_link: 'https://l' })
+  assert.deepEqual([p.biteshipId, p.status, p.trackingId, p.driverName, p.link], ['bs1', 'picked', 't1', 'Budi', 'https://l'])
+  assert.equal(orderStatusFor('picked'), 'dikirim')
+  assert.equal(orderStatusFor('dropping_off'), 'dikirim')
+  assert.equal(orderStatusFor('delivered'), 'diterima')
+  assert.equal(orderStatusFor('allocated'), null)
+  assert.equal(parseBiteshipWebhook(null).status, '')
+})
+
+test('masalah kurir dan boleh-panggil-lagi', () => {
+  assert.ok(courierProblem('courier_not_found'))
+  assert.ok(!courierProblem('picked'))
+  assert.ok(canBookCourier(null))
+  assert.ok(canBookCourier({ biteshipId: 'x', status: 'courier_not_found' }))
+  assert.ok(!canBookCourier({ biteshipId: 'x', status: 'allocated' }))
+  assert.ok(!canBookCourier({ biteshipId: 'x', status: 'picked' }))
+})
+
+test('token webhook dibandingkan aman', () => {
+  assert.ok(verifyWebhookToken('abc', 'abc'))
+  assert.ok(!verifyWebhookToken('abd', 'abc'))
+  assert.ok(!verifyWebhookToken('', 'abc'))
+  assert.ok(!verifyWebhookToken('a', ''))
+})

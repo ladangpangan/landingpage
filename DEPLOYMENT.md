@@ -370,3 +370,7 @@ Catatan: Mayar mewajibkan email pembeli; toko memakai email Google bila pembeli 
 1. Daftar di biteship.com; ambil **API Key** (mulai dari kunci uji coba) dan isi saldo bila memakai kunci sungguhan (biaya kurir dipotong dari saldo; pembeli membayar ongkir ke toko).
 2. Admin (Owner) → Kurir Instan (Biteship): isi API Key, data penjemputan gudang (nama, telepon, alamat), tekan "Cek kurir tersedia", centang kurir instan yang diizinkan, nyalakan, Simpan. Titik gudang diambil dari menu Ongkir & Voucher.
 3. Cara mematikan: matikan saklar di tab yang sama; pembeli hanya melihat Kurir Toko.
+
+Memanggil kurir dan status otomatis (Biteship):
+- Setelah pesanan Dibayar lalu Dikemas, admin menekan **Panggil Kurir** di kartu pesanan. Bila gagal (mis. "Area tidak terjangkau") pesan Biteship tampil dan tombol bisa ditekan lagi.
+- Webhook: di admin tab Kurir Instan isi **Webhook Token** (teks acak), Simpan, lalu daftarkan `https://marketplace.ladangpangan.id/api/biteship/webhook?token=<token>` di dashboard Biteship. Bila status tidak bergerak otomatis, lihat "Kabar terakhir dari Biteship" di tab itu dan kirim isinya ke developer.

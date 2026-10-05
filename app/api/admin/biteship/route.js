@@ -11,6 +11,7 @@ async function snapshot() {
     origin: c.origin || { contactName: '', contactPhone: '', contactEmail: '', address: '', note: '' },
     hasApiKey: !!c.apiKey,
     apiKeyPreview: c.apiKey ? `••••${c.apiKey.slice(-4)}` : null,
+    hasWebhookToken: !!c.webhookToken,
     hasWarehouse: !!c.warehouse,
     ready: c.ready,
   }
