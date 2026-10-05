@@ -197,7 +197,75 @@ function ImageField({ label, value, onChange, availableImages }) {
   )
 }
 
-function ProductEditModal({ product, isNew, onChange, onSave, onClose, availableImages, saving}) {
+// Pilih kategori dari daftar yang sudah ada, atau tambah kategori baru.
+function CategoryField({ value, options, onChange }) {
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState('')
+  const list = Array.from(new Set(['Lainnya', ...options, ...(value ? [value] : [])])).sort((a, b) => a.localeCompare(b, 'id'))
+
+  function confirmNew() {
+    const name = draft.trim().slice(0, 60)
+    if (!name) return
+    onChange(name)
+    setAdding(false)
+    setDraft('')
+  }
+
+  if (adding) {
+    return (
+      <div className="flex gap-2">
+        <input
+          autoFocus
+          className={inputClass}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              confirmNew()
+            }
+          }}
+          placeholder="Nama kategori baru"
+          maxLength={60}
+        />
+        <button
+          type="button"
+          onClick={confirmNew}
+          className="shrink-0 rounded-xl bg-[#2FA966] px-4 text-sm font-medium text-white hover:bg-[#22824E]"
+        >
+          Pakai
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAdding(false)
+            setDraft('')
+          }}
+          className="shrink-0 rounded-xl border border-[#D6EBDC] px-3 text-sm text-[#4C6356]"
+        >
+          Batal
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <select
+      className={inputClass}
+      value={value || 'Lainnya'}
+      onChange={(e) => (e.target.value === '__baru__' ? setAdding(true) : onChange(e.target.value))}
+    >
+      {list.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+      <option value="__baru__">+ Tambah kategori baru…</option>
+    </select>
+  )
+}
+
+function ProductEditModal({ product, isNew, onChange, onSave, onClose, availableImages, saving, categories }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -222,11 +290,10 @@ function ProductEditModal({ product, isNew, onChange, onSave, onClose, available
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Kategori" hint="Untuk pengelompokan filter">
-              <input
-                className={inputClass}
+              <CategoryField
                 value={product.category || ''}
-                onChange={(e) => onChange({ category: e.target.value })}
-                placeholder="Ayam Segar"
+                options={categories || []}
+                onChange={(category) => onChange({ category })}
               />
             </Field>
             <Field label="Satuan">
@@ -1239,6 +1306,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           onSave={saveProductModal}
           onClose={closeProductModal}
           saving={savingProducts}
+          categories={productCategories}
           availableImages={availableImages}
         />
       )}
