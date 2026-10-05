@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { buyerCancelOrder } from '@/lib/orders'
+import { buyerCancelOrder, getOrder } from '@/lib/orders'
 import { cancelMidtransTransaction } from '@/lib/midtrans'
+import { getMayarConfig, closeMayarInvoice } from '@/lib/mayar-api'
 import { hasAccess } from '@/lib/order-guard'
 
 export async function POST(request, { params }) {
@@ -8,7 +9,13 @@ export async function POST(request, { params }) {
   const key = new URL(request.url).searchParams.get('k')
   if (!hasAccess(orderId, key)) return NextResponse.json({ error: 'Tautan pesanan tidak sah.' }, { status: 403 })
   try {
-    const r = await buyerCancelOrder(orderId, cancelMidtransTransaction)
+    // Batalkan juga di penyedia pembayaran (upaya terbaik, kegagalan diabaikan).
+    const order = await getOrder(orderId)
+    const cancelRemote =
+      order?.payGateway === 'mayar'
+        ? async () => closeMayarInvoice(await getMayarConfig(), order.payment?.invoiceId)
+        : cancelMidtransTransaction
+    const r = await buyerCancelOrder(orderId, cancelRemote)
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
     return NextResponse.json({ ok: true })
   } catch (e) {

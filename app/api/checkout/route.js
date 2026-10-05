@@ -6,7 +6,10 @@ import { buildMidtransItems } from '@/lib/checkout-math'
 import { reserveStock, releaseStock } from '@/lib/stock'
 import { reserveSlot, releaseSlot } from '@/lib/delivery'
 import { reserveVoucher, releaseVoucher } from '@/lib/vouchers'
-import { createOrder, attachSnapToken, failOrderBeforePayment } from '@/lib/orders'
+import { createOrder, attachSnapToken, failOrderBeforePayment, attachMayarInvoice, expireStaleMayarOrders } from '@/lib/orders'
+import { getMayarConfig, createMayarInvoice } from '@/lib/mayar-api'
+import { buildInvoiceBody } from '@/lib/mayar'
+import { siteOrigin } from '@/lib/site-url'
 import { syncOrderToErp } from '@/lib/erp-sync'
 import { accessKey } from '@/lib/order-access'
 import { getCurrentCustomer } from '@/lib/customer-session'
@@ -82,6 +85,17 @@ export async function POST(request) {
 
   const loggedIn = await getCurrentCustomer().catch(() => null)
 
+  // Penyedia pembayaran dipilih Owner di admin. Mayar tidak punya kabar kedaluwarsa yang
+  // bisa diandalkan, jadi pesanan Mayar yang menggantung dibersihkan di sini.
+  const payCfg = await getMayarConfig().catch(() => ({ gateway: 'midtrans' }))
+  const gateway = payCfg.gateway
+  if (gateway === 'mayar') {
+    if (!payCfg.apiKey) {
+      return NextResponse.json({ error: 'Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.' }, { status: 503 })
+    }
+    await expireStaleMayarOrders().catch(() => {})
+  }
+
   // 1) Tahan stok, kapasitas slot kirim, dan kuota voucher (masing-masing atomik).
   //    Bila salah satu gagal, yang sudah ditahan dikembalikan. Pembeli belum ditagih apa pun.
   let stock
@@ -143,7 +157,7 @@ export async function POST(request) {
       shipping: shippingInfo,
       grossAmount,
       stockReservation: stock.reserved,
-      extra: { weightKg: ctx.weightKg, pricing: ctx.pricing, delivery: deliveryInfo, location, slotReservation: slotRes, voucherCode, customerId: loggedIn?.id || null },
+      extra: { weightKg: ctx.weightKg, pricing: ctx.pricing, delivery: deliveryInfo, location, slotReservation: slotRes, voucherCode, customerId: loggedIn?.id || null, gateway },
     })
   } catch (error) {
     console.error('[checkout] gagal menyimpan pesanan:', error?.message || error)
@@ -151,7 +165,40 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Pesanan belum bisa disimpan. Silakan coba lagi sebentar lagi.' }, { status: 503 })
   }
 
-  // 3) Transaksi pembayaran. Bila gagal, pesanan ditandai gagal dan semua yang
+  // 3a) Mayar: buat tagihan, pembeli diarahkan ke halaman bayar Mayar.
+  if (gateway === 'mayar') {
+    try {
+      const key = safeAccessKey(orderId)
+      const inv = await createMayarInvoice(
+        payCfg,
+        buildInvoiceBody({
+          orderId,
+          customer: orderCustomer,
+          email: loggedIn?.email,
+          amount: grossAmount,
+          redirectUrl: `${siteOrigin(request)}/pesanan/${encodeURIComponent(orderId)}${key ? `?k=${key}` : ''}`,
+          expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          itemsText: orderItems.map((i) => `${i.qty}x ${i.name}`).join(', '),
+        })
+      )
+      await attachMayarInvoice(orderId, inv)
+      syncOrderToErp({
+        orderId,
+        items: orderItems,
+        customer: orderCustomer,
+        shipping: shippingInfo,
+        grossAmount,
+        extra: { delivery: deliveryInfo, location, pricing: ctx.pricing, weightKg: ctx.weightKg },
+      })
+      return NextResponse.json({ orderId, accessKey: key, gateway: 'mayar', redirectUrl: inv.link })
+    } catch (error) {
+      console.error('Gagal membuat tagihan Mayar:', error?.message || error)
+      await failOrderBeforePayment(orderId)
+      return NextResponse.json({ error: 'Gagal membuat transaksi pembayaran. Silakan coba lagi.' }, { status: 500 })
+    }
+  }
+
+  // 3) Transaksi pembayaran (Midtrans). Bila gagal, pesanan ditandai gagal dan semua yang
   //    ditahan (stok, slot, voucher) dikembalikan lewat transisi status.
   try {
     const snap = await getSnapClient()
@@ -188,6 +235,7 @@ export async function POST(request) {
     return NextResponse.json({
       orderId,
       accessKey: safeAccessKey(orderId),
+      gateway: 'midtrans',
       token: transaction.token,
       redirectUrl: transaction.redirect_url,
     })

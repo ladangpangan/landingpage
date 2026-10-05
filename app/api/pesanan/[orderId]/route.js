@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getBuyerOrder } from '@/lib/orders'
+import { getBuyerOrder, expireStaleMayarOrders } from '@/lib/orders'
 import { hasAccess } from '@/lib/order-guard'
 
 export const dynamic = 'force-dynamic'
@@ -10,6 +10,7 @@ export async function GET(request, { params }) {
   const key = new URL(request.url).searchParams.get('k')
   if (!hasAccess(orderId, key)) return NextResponse.json({ error: 'Tautan pesanan tidak sah.' }, { status: 403 })
   try {
+    await expireStaleMayarOrders().catch(() => {})
     const order = await getBuyerOrder(orderId)
     if (!order) return NextResponse.json({ error: 'Pesanan tidak ditemukan.' }, { status: 404 })
     return NextResponse.json({ order }, { headers: { 'Cache-Control': 'no-store' } })

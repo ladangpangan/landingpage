@@ -355,3 +355,12 @@ Tanpa langkah ini toko tetap jalan; tombol "Masuk" hanya muncul bila kunci diisi
 3. Isi variabel di VPS: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SITE_URL=https://marketplace.ladangpangan.id`, lalu pasang ulang.
 4. Selama status aplikasi "Testing", hanya email yang didaftarkan sebagai test user yang bisa masuk. Ubah ke "In production" di Tahap 5 (sebelum rilis publik).
 5. Cara kembali: kosongkan `GOOGLE_CLIENT_ID`; tombol masuk hilang, belanja tanpa login tidak terpengaruh.
+
+
+## Pembayaran lewat Mayar.id (opsional, pilihan di admin)
+1. Daftar di mayar.id. Buat **API Key** di web.mayar.id (menu API Keys). Sandbox dan Production punya kunci berbeda (Sandbox memakai alamat `*.mayar.club`).
+2. Di admin toko → Payment Gateway: pilih **Mayar.id**, tempel API Key, karang **Webhook Token** (teks acak panjang), biarkan mode Production mati untuk uji coba, tekan Simpan.
+3. Di Mayar, daftarkan webhook ke `https://marketplace.ladangpangan.id/api/mayar/notification` dengan token yang sama (dikirim di header `x-callback-token`).
+4. Uji satu pesanan. Bila status tidak berubah menjadi Dibayar, buka admin → Payment Gateway → "Pemberitahuan terakhir dari penyedia" dan kirim isinya ke developer.
+5. Cara kembali ke Midtrans: pilih Midtrans di admin, Simpan. Pesanan Mayar yang masih menunggu tetap bisa dibayar lewat tautannya.
+Catatan: Mayar mewajibkan email pembeli; toko memakai email Google bila pembeli login, selain itu alamat sementara `<nomor-pesanan>@pesanan.ladangpangan.id`.

@@ -36,7 +36,7 @@ function Section({ icon: Icon, title, hint, children }) {
   )
 }
 
-export default function CheckoutClient({ whatsappNumber, waMessage, midtransClientKey, midtransIsProduction }) {
+export default function CheckoutClient({ whatsappNumber, waMessage, midtransClientKey, midtransIsProduction, paymentGateway }) {
   const router = useRouter()
   const { items, total: cartTotal, hydrated, clearCart } = useCart()
 
@@ -65,7 +65,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
   const snapSrc = midtransIsProduction ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js'
 
   useEffect(() => {
-    if (!midtransClientKey || typeof window === 'undefined') return
+    if (paymentGateway === 'mayar' || !midtransClientKey || typeof window === 'undefined') return
     if (window.snap) {
       setSnapReady(true)
       return
@@ -168,8 +168,10 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
     if (!name.trim() || !phone.trim() || !address.trim()) return toast.error('Nama, nomor WhatsApp, dan alamat lengkap wajib diisi.')
     if (!zoneOk) return toast.error('Bagikan lokasi Anda dulu supaya ongkir bisa dihitung.')
     if (!deliveryOk) return toast.error('Pilih cara dan jam pengiriman.')
-    if (!midtransClientKey) return toast.error('Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.')
-    if (!snapReady || !window.snap) return toast.error('Pembayaran masih dimuat, coba lagi sebentar lagi.')
+    if (paymentGateway !== 'mayar') {
+      if (!midtransClientKey) return toast.error('Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.')
+      if (!snapReady || !window.snap) return toast.error('Pembayaran masih dimuat, coba lagi sebentar lagi.')
+    }
 
     setLoading(true)
     try {
@@ -196,6 +198,12 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ label: 'Alamat', name, phone, address, lat: location.lat, lng: location.lng }),
         }).catch(() => {})
+      }
+      // Mayar: pembeli diantar ke halaman bayar Mayar, lalu kembali ke halaman pesanan.
+      if (data.gateway === 'mayar' && data.redirectUrl) {
+        clearCart()
+        window.location.href = data.redirectUrl
+        return
       }
       // Pesanan sudah tersimpan: apa pun hasil jendela bayar, pembeli diantar ke halaman pesanannya
       // (di sana ia bisa melanjutkan bayar, membatalkan, atau melacak).

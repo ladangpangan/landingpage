@@ -11,6 +11,7 @@ export default async function CheckoutPage() {
       waMessage={settings.waMessage}
       midtransClientKey={settings.midtransClientKey}
       midtransIsProduction={settings.midtransIsProduction}
+      paymentGateway={settings.paymentGateway}
     />
   )
 }

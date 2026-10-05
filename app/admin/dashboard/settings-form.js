@@ -446,6 +446,14 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [isProduction, setIsProduction] = useState(!!initialSettings.midtransIsProduction)
   const [hasServerKey, setHasServerKey] = useState(initialSettings.hasMidtransServerKey)
   const [serverKeyPreview, setServerKeyPreview] = useState(initialSettings.midtransServerKeyPreview)
+  const [gateway, setGateway] = useState(initialSettings.paymentGateway || 'midtrans')
+  const [mayarKey, setMayarKey] = useState('')
+  const [mayarToken, setMayarToken] = useState('')
+  const [mayarProd, setMayarProd] = useState(!!initialSettings.mayarIsProduction)
+  const [hasMayarKey, setHasMayarKey] = useState(!!initialSettings.hasMayarApiKey)
+  const [hasMayarToken, setHasMayarToken] = useState(!!initialSettings.hasMayarWebhookToken)
+  const [mayarKeyPreview, setMayarKeyPreview] = useState(initialSettings.mayarApiKeyPreview)
+  const [payEvents, setPayEvents] = useState([])
   const [saving, setSaving] = useState(false)
   const [savingProducts, setSavingProducts] = useState(false)
   const [productSearch, setProductSearch] = useState('')
@@ -456,6 +464,11 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [mediaLoading, setMediaLoading] = useState(true)
   const [mediaUploading, setMediaUploading] = useState(false)
   const mediaFileRef = useRef(null)
+
+  useEffect(() => {
+    if (tab !== 'payment' || !isOwner) return
+    fetch('/api/admin/payment-events').then((r) => r.json()).then((d) => setPayEvents(d.events || [])).catch(() => {})
+  }, [tab, isOwner])
 
   // Cek pesanan baru yang sudah dibayar tiap 30 detik (pemberitahuan di aplikasi).
   useEffect(() => {
@@ -658,6 +671,10 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           midtransClientKey: clientKey,
           midtransServerKey: serverKey,
           midtransIsProduction: isProduction,
+          paymentGateway: gateway,
+          mayarApiKey: mayarKey,
+          mayarWebhookToken: mayarToken,
+          mayarIsProduction: mayarProd,
         }),
       })
       const data = await res.json()
@@ -665,6 +682,11 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
 
       setHasServerKey(data.hasMidtransServerKey)
       setServerKeyPreview(data.midtransServerKeyPreview)
+      setHasMayarKey(!!data.hasMayarApiKey)
+      setHasMayarToken(!!data.hasMayarWebhookToken)
+      setMayarKeyPreview(data.mayarApiKeyPreview)
+      setMayarKey('')
+      setMayarToken('')
       setServerKey('')
       toast.success('Pengaturan landing page berhasil disimpan.')
     } catch (error) {
@@ -1138,7 +1160,71 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
 
           {tab === 'payment' && isOwner && (
             <div className={`mx-auto w-full max-w-3xl ${cardClass}`}>
-              <h2 className="text-base font-semibold text-[#142A1C]">Payment Gateway (Midtrans)</h2>
+              <h2 className="text-base font-semibold text-[#142A1C]">Payment Gateway</h2>
+              <p className="mt-1 text-sm text-[#4C6356]">Pilih satu penyedia pembayaran yang dipakai pembeli. Isi kunci keduanya bila perlu; yang aktif hanya yang dipilih.</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {[['midtrans', 'Midtrans'], ['mayar', 'Mayar.id']].map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setGateway(id)}
+                    className={`min-h-11 rounded-xl border px-4 text-sm font-semibold ${gateway === id ? 'border-[#1E5A3A] bg-[#1E5A3A] text-white' : 'border-[#D6EBDC] bg-white text-[#1F3A28]'}`}
+                  >
+                    {label}{gateway === id ? ' (aktif)' : ''}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-[#7E9488]">Tekan Simpan di kanan atas setelah memilih.</p>
+
+              {gateway === 'mayar' && (
+                <div className="mt-5 space-y-4 rounded-xl border border-[#D6EBDC] p-4">
+                  <h3 className="text-sm font-semibold text-[#142A1C]">Pengaturan Mayar.id</h3>
+                  <div className="flex items-center gap-2 text-sm">
+                    {hasMayarKey && hasMayarToken ? <CheckCircle2 className="h-4 w-4 text-[#2FA966]" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                    <span className={hasMayarKey && hasMayarToken ? 'text-[#2FA966]' : 'text-red-600'}>
+                      {hasMayarKey && hasMayarToken ? 'Mayar siap dipakai' : 'Mayar belum lengkap: isi API Key dan Webhook Token'}
+                    </span>
+                  </div>
+                  <Field label="API Key Mayar" hint={hasMayarKey ? `Tersimpan (${mayarKeyPreview}) — kosongkan untuk mempertahankan.` : 'Buat di web.mayar.id (menu API Keys). Sandbox dan Production punya kunci berbeda.'}>
+                    <input type="password" autoComplete="off" className={inputClass} value={mayarKey} onChange={(e) => setMayarKey(e.target.value)} placeholder={hasMayarKey ? '••••••••••••' : 'Tempel API Key'} />
+                  </Field>
+                  <Field label="Webhook Token" hint={hasMayarToken ? 'Tersimpan — kosongkan untuk mempertahankan.' : 'Karang sendiri sebuah teks acak panjang (min. 24 huruf/angka). Teks yang sama dimasukkan di Mayar saat mendaftarkan webhook.'}>
+                    <input type="password" autoComplete="off" className={inputClass} value={mayarToken} onChange={(e) => setMayarToken(e.target.value)} placeholder={hasMayarToken ? '••••••••••••' : 'Teks rahasia acak'} />
+                  </Field>
+                  <div className="rounded-xl bg-[#F7FBF8] p-3 text-xs text-[#1F3A28]">
+                    <p className="font-semibold">Alamat webhook untuk didaftarkan di Mayar:</p>
+                    <p className="mt-1 break-all font-mono">https://marketplace.ladangpangan.id/api/mayar/notification</p>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-[#D6EBDC] p-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#142A1C]">Mayar mode Production</p>
+                      <p className="text-xs text-[#7E9488]">{mayarProd ? 'AKTIF — pembayaran nyata.' : 'Nonaktif (Sandbox) — aman untuk uji coba.'}</p>
+                    </div>
+                    <button type="button" role="switch" aria-checked={mayarProd} onClick={() => setMayarProd((v) => !v)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${mayarProd ? 'bg-[#2FA966]' : 'bg-[#D6EBDC]'}`}>
+                      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${mayarProd ? 'left-5' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#142A1C]">Pemberitahuan terakhir dari penyedia</p>
+                    {payEvents.length === 0 ? (
+                      <p className="mt-1 text-xs text-[#7E9488]">Belum ada. Setelah pembayaran uji coba, isinya muncul di sini (berguna bila status pesanan tidak berubah).</p>
+                    ) : (
+                      <ul className="mt-2 space-y-2">
+                        {payEvents.map((e, i) => (
+                          <li key={i} className="rounded-lg border border-[#D6EBDC] p-2 text-xs">
+                            <p className="font-semibold">{e.gateway} · {new Date(e.at).toLocaleString('id-ID')} · {e.outcome}</p>
+                            <p className="mt-1 break-all font-mono text-[11px] text-[#4C6356]">{e.payload}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {gateway === 'midtrans' && (
+              <div>
+              <h3 className="mt-5 text-sm font-semibold text-[#142A1C]">Pengaturan Midtrans</h3>
               <p className="mt-1 text-sm text-[#4C6356]">
                 Ambil Server Key &amp; Client Key dari dashboard Midtrans (Settings &gt; Access Keys). Gunakan
                 mode Sandbox dulu sebelum go-live.
@@ -1203,6 +1289,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                   </button>
                 </div>
               </div>
+              </div>
+              )}
             </div>
           )}
         </form>
