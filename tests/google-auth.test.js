@@ -22,7 +22,9 @@ test('state: sah sekali pakai untuk nonce yang sama, ditolak bila diubah / kedal
   assert.equal(checkState({ state, cookieNonce: 'lain', secret: 's', now: 2000 }), null)
   assert.equal(checkState({ state, cookieNonce: nonce, secret: 'x', now: 2000 }), null)
   assert.equal(checkState({ state, cookieNonce: nonce, secret: 's', now: 1000 + 11 * 60 * 1000 }), null)
-  assert.equal(checkState({ state: state.replace(/.$/, '0'), cookieNonce: nonce, secret: 's', now: 2000 }), null)
+  // Ubah karakter terakhir tanda tangan menjadi karakter LAIN (bukan selalu '0': kadang sudah '0').
+  const tampered = state.slice(0, -1) + (state.endsWith('0') ? '1' : '0')
+  assert.equal(checkState({ state: tampered, cookieNonce: nonce, secret: 's', now: 2000 }), null)
   assert.equal(checkState({ state: 'a.b', cookieNonce: nonce, secret: 's' }), null)
   const evil = createState({ returnTo: 'https://evil.com', secret: 's', now: 1000 })
   assert.equal(checkState({ state: evil.state, cookieNonce: evil.nonce, secret: 's', now: 1500 }).returnTo, '/')
