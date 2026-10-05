@@ -61,10 +61,10 @@ Rencana lengkap ada di `docs/rencana.md`. Cara deploy ada di `DEPLOYMENT.md`.
 - Gambar upload di `/app/uploads` lewat `app/api/uploads/[filename]` — jangan pindahkan ke `public/`.
 - Uji database nyata tidak tersedia di cloud (mongod tidak bisa diunduh); logika DB diuji dengan tiruan (mingo). Uji sungguhan di VPS. Hati-hati: `pkill -f` / `pgrep -f` dengan kata yang ada di perintah itu sendiri membunuh shell sendiri.
 
-## Deploy (ringkas; detail di DEPLOYMENT.md)
-- VPS Hostinger KVM 1 (`srv919824`, IP 145.79.8.46, Ubuntu 24.04) dipakai bersama Odoo.
-- Nginx sistem (bukan Docker) memegang port 80/443 dan proxy `marketplace.ladangpangan.id` → `127.0.0.1:3001`; SSL lewat certbot. JANGAN tambah Caddy/Traefik/port 80/443 di compose; jangan sentuh Nginx/Odoo.
-- `docker-compose.yaml`: service `mongo` (mongo:7, volume `mongo_data`, tidak dibuka ke luar) dan `landing` (port `127.0.0.1:3001`, volume `uploads_data`). Jangan pakai bind-mount relatif.
-- Deploy lewat Hostinger VPS MCP `VPS_createNewProjectV1(... project_name="ladang-landing", content=<URL repo>)` yang menggantikan project lama.
-- Env var: `MONGO_ROOT_USER/PASSWORD` (harus tetap sama setiap deploy), `MONGO_DB_NAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `MIDTRANS_*`, `ERP_INTEGRATION_URL/KEY`. Nilai rahasia tidak pernah di-commit.
-- Nginx `client_max_body_size 10m` wajib untuk upload gambar.
+## Deploy (ringkas; detail di DEPLOYMENT.md bagian "VPS KVM 2 (aktif)")
+- Marketplace berjalan di **VPS KVM 2** (id 1956504, IP 148.230.102.34, Ubuntu 24.04 + Docker + Traefik). DNS `marketplace.ladangpangan.id` mengarah ke sana. KVM 1 (919824, Nginx + Odoo) sudah tidak dipakai untuk marketplace.
+- Traefik memegang 80/443 dan HTTPS (label ada di `docker-compose.yaml`). Server juga menjalankan ERP, n8n, dll sebagai proyek terpisah: JANGAN sentuh. Marketplace pakai port lokal 3002 (3001 = ERP).
+- Pasang lewat konektor Hostinger: `vps_docker_create(virtualMachineId=1956504, project_name="ladang-landing", content="https://github.com/ladangpangan/landingpage", environment=<SEMUA variabel>)`. Alat membaca cabang `master`, jadi `master` harus selalu disamakan dengan `main` (fast-forward). JANGAN kirim isi compose mentah: itu tidak membangun ulang kode. Selalu verifikasi log memuat "Building"/"Built" sebelum menyatakan berhasil; status "success" saja tidak cukup.
+- `vps_docker_get` menampilkan `environment` (rahasia) apa adanya: jangan salin nilai ke repo/dokumen. Pemilik sudah mengatakan boleh live berubah langsung (belum ada pengguna) dan sudah membuat backup sendiri; tetap hati-hati.
+- Variabel: `MONGO_ROOT_USER/PASSWORD` (harus tetap sama), `MONGO_DB_NAME`, `ADMIN_OWNER_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `MIDTRANS_*`, `ERP_INTEGRATION_URL/KEY`.
+- Dari sandbox cloud tidak bisa membuka situs publik (proxy); verifikasi lewat log/status wadah, minta pemilik mencoba lewat HP.
