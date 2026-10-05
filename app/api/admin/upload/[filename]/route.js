@@ -1,18 +1,8 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/admin-auth'
+import { requireAdmin } from '@/lib/admin-auth'
 import { UPLOAD_DIR } from '@/lib/uploads'
-
-async function requireAdmin() {
-  const store = await cookies()
-  const token = store.get(SESSION_COOKIE)?.value
-  if (!verifySessionToken(token)) {
-    return { error: NextResponse.json({ error: 'Unauthorized.' }, { status: 401 }) }
-  }
-  return {}
-}
 
 export async function DELETE(request, { params }) {
   const { error } = await requireAdmin()

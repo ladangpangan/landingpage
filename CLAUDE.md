@@ -31,6 +31,8 @@ Rencana lengkap ada di `docs/rencana.md`. Cara deploy ada di `DEPLOYMENT.md`.
 - Status pesanan (tidak boleh mundur): Menunggu Bayar → Dibayar → Dikemas → Dikirim → Diterima; atau Batal / Gagal / Kedaluwarsa.
 - Produk diinput lewat admin + impor Excel/CSV. Simpan "kode ERP" per produk untuk integrasi ERP nanti.
 
+- Pembeli: beli TANPA login. Login Google hanya pilihan (riwayat belanja, alamat tersimpan), dikerjakan di Tahap 4; butuh kunci Google OAuth + halaman Kebijakan Privasi dari pemilik.
+
 ## Tampilan
 - Bahasa Indonesia hangat & sederhana; HP dulu; tombol besar.
 - Warna: hijau tua `#1E5A3A`, hijau muda `#E3F0E7`, latar `#F5F7F6`, kartu putih. DILARANG oranye/krem.
@@ -41,19 +43,19 @@ Rencana lengkap ada di `docs/rencana.md`. Cara deploy ada di `DEPLOYMENT.md`.
 1. Fondasi & keamanan: struktur data baru (produk, varian, paket, zona, jadwal, voucher, admin), perbaiki keamanan pembayaran & login, admin multi-akun (Owner & Staf).
 2. Tampilan pembeli: beranda baru, detail produk, Paket Hemat/Masak, pencarian, produk habis.
 3. Checkout: ongkir otomatis, gratis ongkir, voucher, jadwal kirim dengan batas 40 kg.
-4. Setelah bayar & admin: halaman sukses + nomor pesanan, lacak pesanan, ubah status, daftar kirim kurir, cetak label, notifikasi WhatsApp, kelola produk/paket/zona/voucher.
+4. Setelah bayar & admin: halaman sukses + nomor pesanan, lacak pesanan (tanpa login: nomor pesanan + nomor WA; plus login Google OPSIONAL untuk riwayat & alamat tersimpan), ubah status, daftar kirim kurir, cetak label, notifikasi WhatsApp, kelola produk/paket/zona/voucher.
 5. Siap rilis: uji lewat HP, uji pembayaran, Meta Pixel & Google Analytics, keamanan tambahan, backup harian otomatis, Midtrans PRODUCTION.
 
-## Kondisi kode saat ini (hasil pelajari sebelum Tahap 1)
-- Next.js 15 (App Router, JavaScript, tanpa TypeScript), Tailwind 3, MongoDB driver 6, midtrans-client, `output: 'standalone'`. Tanpa test dan tanpa linter.
-- `lib/db.js`: semua pengaturan + katalog produk disimpan dalam SATU dokumen `settings/landing` (produk berupa array). Kunci Midtrans juga disimpan di dokumen ini (teks biasa).
-- `lib/orders.js`: koleksi `orders`; status saat ini `pending/paid/failed/cancelled/expired/refunded`; update status tanpa aturan urutan.
-- `lib/admin-auth.js`: satu password bersama (`ADMIN_PASSWORD`), cookie bertanda tangan HMAC, tanpa akun/peran, tanpa batas percobaan login.
-- `app/api/checkout/route.js`: harga diambil dari server (bagus), tetapi belum ada stok/ongkir/voucher/jadwal; pesanan disimpan SETELAH transaksi Midtrans dibuat; kegagalan simpan hanya di-log.
-- `app/api/midtrans/notification/route.js`: signature diverifikasi, tetapi jumlah (`gross_amount`) tidak dicocokkan dengan pesanan, status bisa mundur, perbandingan signature bukan constant-time.
-- `lib/erp-sync.js`: kirim pesanan ke ERP (opsional, fire-and-forget) — jangan rusak kontraknya (lihat DEPLOYMENT.md).
-- Gambar upload disimpan di `/app/uploads` (volume Docker), disajikan lewat `app/api/uploads/[filename]` — jangan pindahkan ke `public/`.
-- Alur WhatsApp, banner, hero slide, galeri/media ada di admin (`app/admin/dashboard/settings-form.js`).
+## Kondisi kode (setelah Tahap 1, di branch `claude/tahap-1-fondasi-keamanan`)
+- Next.js 15 (App Router, JavaScript), Tailwind 3, MongoDB driver 6, midtrans-client, `output: 'standalone'`. Tes logika: `npm test` (node:test, folder `tests/`). Belum ada linter.
+- Struktur data: lihat komentar di `lib/schema.js` (koleksi products, variants, bundles, zones, delivery_config, vouchers, admins, orders, login_attempts). `ensureSchema()` membuat index, mengisi zona & aturan kirim awal, memigrasi status pesanan lama dan katalog lama.
+- Katalog: `lib/catalog.js`. UI toko/admin masih memakai bentuk "datar" (1 produk = 1 varian bawaan, id sama). Varian/paket/voucher/zona BELUM punya UI (Tahap 2–4).
+- Login: akun per orang (Owner/Staf), password scrypt, sesi bertanda tangan + dicek ke database, batas 5 gagal/15 menit (`lib/admins.js`, `lib/admin-auth.js`). Owner pertama dibuat dari `ADMIN_OWNER_EMAIL` + `ADMIN_PASSWORD`. Kunci Midtrans hanya bisa dilihat/diubah Owner (masih tersimpan teks biasa di dokumen settings).
+- Pesanan: disimpan SEBELUM transaksi Midtrans; status maju saja (`lib/order-status.js`); notifikasi Midtrans cek signature (constant-time) + jumlah; pembayaran telat ditandai `needsReview`.
+- Belum ada (Tahap berikutnya): stok, ongkir, voucher, jadwal kirim, ubah status dari admin, halaman sukses/lacak, notifikasi WhatsApp.
+- `lib/erp-sync.js`: kirim pesanan ke ERP (opsional, fire-and-forget); kontrak di DEPLOYMENT.md (ditambah field `erpCode`).
+- Gambar upload di `/app/uploads` (volume Docker) lewat `app/api/uploads/[filename]` — jangan pindahkan ke `public/`.
+- Uji database nyata tidak tersedia di lingkungan cloud (mongod tidak bisa diunduh); logika DB diuji dengan tiruan. Uji sungguhan dilakukan di VPS.
 
 ## Deploy (ringkas; detail di DEPLOYMENT.md)
 - VPS Hostinger KVM 1 (`srv919824`, IP 145.79.8.46, Ubuntu 24.04) dipakai bersama Odoo.

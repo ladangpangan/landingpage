@@ -1,12 +1,9 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/admin-auth'
+import { getCurrentAdmin } from '@/lib/admin-auth'
 import LoginForm from './login-form'
 
 export default async function AdminLoginPage() {
-  const store = await cookies()
-  const token = store.get(SESSION_COOKIE)?.value
-  if (verifySessionToken(token)) redirect('/admin/dashboard')
+  if (await getCurrentAdmin()) redirect('/admin/dashboard')
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FFFFFF] px-5">

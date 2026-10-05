@@ -6,6 +6,7 @@ import { Loader2, Lock } from 'lucide-react'
 
 export default function LoginForm() {
   const router = useRouter()
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -18,7 +19,7 @@ export default function LoginForm() {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal masuk.')
@@ -34,11 +35,23 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
       <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-[#1F3A28]">Email</span>
+        <input
+          type="email"
+          required
+          autoFocus
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"
+        />
+      </label>
+      <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-[#1F3A28]">Password</span>
         <input
           type="password"
           required
-          autoFocus
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"

@@ -156,11 +156,59 @@ anywhere):
   self-hosted `mongo` container (see above). Must be set and must stay the
   same on every redeploy.
 - `MONGO_DB_NAME` — optional, defaults to `ladang_landing`.
-- `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET` — required for `/admin` login.
+- `ADMIN_OWNER_EMAIL` / `ADMIN_PASSWORD` — dipakai sekali untuk membuat akun Owner
+  pertama (lihat "Akun admin" di bawah). `ADMIN_SESSION_SECRET` — wajib,
+  penanda sesi login.
 - `MIDTRANS_SERVER_KEY` / `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` /
   `MIDTRANS_IS_PRODUCTION` — optional at deploy time; can also be set from
   the `/admin` page after login, which takes precedence.
 - `ERP_INTEGRATION_URL` / `ERP_INTEGRATION_KEY` — optional; see below.
+
+## Akun admin (sejak Tahap 1)
+
+Login admin memakai email + password per orang, disimpan (di-hash) di koleksi
+`admins`. Ada dua peran: **Owner** (semua akses, termasuk kunci Midtrans dan
+kelola akun) dan **Staf** (produk, pesanan, galeri; tanpa pembayaran/akun).
+Percobaan login gagal dibatasi (5x per 15 menit per email+IP).
+
+Akun Owner pertama: isi `ADMIN_OWNER_EMAIL` dan `ADMIN_PASSWORD` di environment,
+lalu masuk sekali di `/admin` dengan keduanya. Akun dibuat otomatis. **Segera
+ganti password lewat menu Akun** (minimal 10 karakter). Setelah ada akun,
+`ADMIN_PASSWORD` tidak dipakai lagi dan boleh dikosongkan.
+
+Jika Owner lupa password dan tidak ada Owner lain: kosongkan koleksi `admins`
+(`docker exec -it <mongo> mongosh ... --eval 'db.admins.deleteMany({})'`), lalu
+login lagi dengan `ADMIN_OWNER_EMAIL`/`ADMIN_PASSWORD`.
+
+## Backup sebelum memasang versi baru, dan cara kembali
+
+**Backup (sebelum setiap pemasangan):**
+1. hPanel Hostinger → VPS → **Snapshot & backup** → buat snapshot. Ini
+   menyimpan `mongo_data` dan `uploads_data` sekaligus.
+2. Opsional, salinan database saja (di Konsol web VPS):
+   `docker exec $(docker ps -qf name=mongo) mongodump --username "$MONGO_ROOT_USER" --password "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin --archive=/data/db/backup-$(date +%F).archive`
+
+**Kembali ke versi sebelumnya bila ada masalah:**
+- Aplikasi saja: deploy ulang commit sebelumnya (di GitHub, catat nomor commit
+  yang jalan baik sebelum update; deploy dari commit itu).
+- Data ikut rusak: pulihkan snapshot dari hPanel (menggantikan seluruh VPS
+  ke kondisi snapshot, termasuk Odoo, jadi hati-hati) atau
+  `mongorestore --archive=... --drop` dari file backup di atas.
+- Perubahan Tahap 1 hanya MENAMBAH koleksi baru (`products`, `variants`,
+  `zones`, `delivery_config`, `admins`, dst.) dan mengganti nama status pesanan.
+  Versi lama tidak membaca koleksi baru, jadi kembali ke versi lama aman untuk
+  produk, tetapi status pesanan baru (mis. `dibayar`) tidak dikenali versi lama.
+
+## Pesanan & pembayaran (sejak Tahap 1)
+
+- Pesanan disimpan dulu (status `menunggu_bayar`), baru transaksi Midtrans
+  dibuat. Bila database mati, checkout menolak dengan pesan "coba lagi".
+- Status: `menunggu_bayar → dibayar → dikemas → dikirim → diterima`, atau
+  `batal` / `gagal` / `kedaluwarsa` (hanya dari `menunggu_bayar`). Tidak bisa mundur.
+- Notifikasi Midtrans (`/api/midtrans/notification`): signature diverifikasi,
+  `gross_amount` harus sama dengan total pesanan, dan status hanya maju.
+  Pembayaran yang masuk untuk pesanan yang sudah batal/kedaluwarsa tidak
+  mengubah status; pesanan ditandai `needsReview` agar dicek pemilik.
 
 ## ERP integration
 
@@ -180,7 +228,7 @@ x-api-key: <ERP_INTEGRATION_KEY>
 {
   "orderId": "LPI-...",
   "customer": { "name": "...", "phone": "...", "address": "..." },
-  "items": [{ "id": "...", "name": "...", "price": 32000, "qty": 2 }],
+  "items": [{ "id": "...", "name": "...", "price": 32000, "qty": 2, "erpCode": "..." }],
   "grossAmount": 64000
 }
 ```

@@ -20,6 +20,7 @@ services:
     environment:
       MONGO_URL: mongodb://${MONGO_ROOT_USER:-landing_app}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
       MONGO_DB_NAME: ${MONGO_DB_NAME:-ladang_landing}
+      ADMIN_OWNER_EMAIL: ${ADMIN_OWNER_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-}
       MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
