@@ -38,6 +38,11 @@ import { formatIDR } from '@/lib/format'
 import AccountsPanel from './accounts-panel'
 import BundlesPanel from './bundles-panel'
 import DeliveryPanel from './delivery-panel'
+import TodayPanel from './today-panel'
+import OrdersPanel from './orders-panel'
+import KirimPanel from './kirim-panel'
+import ImportPanel from './import-panel'
+import { wibNow } from '@/lib/shipping'
 
 let uid = 0
 const newProduct = () => ({
@@ -62,17 +67,20 @@ const newSlide = () => ({
 })
 
 const NAV_ITEMS = [
-  { id: 'overview', label: 'Ringkasan', icon: LayoutDashboard },
-  { id: 'orders', label: 'Pesanan', icon: ClipboardList },
-  { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
-  { id: 'products', label: 'Produk & Promo', icon: Package },
+  { id: 'today', label: 'Hari ini', icon: LayoutDashboard, group: 'Harian', noSave: true },
+  { id: 'orders', label: 'Pesanan', icon: ClipboardList, noSave: true },
+  { id: 'kirim', label: 'Daftar Kirim Kurir', icon: Truck, noSave: true },
+  { id: 'products', label: 'Produk & Promo', icon: Package, group: 'Produk & Paket' },
   { id: 'bundles', label: 'Paket Hemat & Masak', icon: Boxes },
-  { id: 'delivery', label: 'Ongkir & Voucher', icon: Truck, ownerOnly: true },
-  { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
+  { id: 'delivery', label: 'Ongkir & Voucher', icon: Truck, ownerOnly: true, group: 'Pengaturan' },
   { id: 'contact', label: 'Pengaturan Toko', icon: Phone },
+  { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
+  { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard, ownerOnly: true },
   { id: 'accounts', label: 'Akun', icon: Users },
 ]
+
+const wibToday = () => wibNow().date
 
 function formatBytes(bytes) {
   if (!bytes) return '0 KB'
@@ -415,7 +423,15 @@ function StatCard({ label, value, tone = 'default' }) {
 export default function SettingsForm({ initialSettings, availableImages, hasMongo, admin }) {
   const isOwner = admin?.role === 'owner'
   const router = useRouter()
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState('today')
+  const [ordersFilter, setOrdersFilter] = useState('')
+  const [summary, setSummary] = useState(null)
+  const seenPaid = useRef(null)
+
+  function goTo(next, filter = '') {
+    setOrdersFilter(filter)
+    setTab(next)
+  }
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [logoUrl, setLogoUrl] = useState(initialSettings.logoUrl || '')
@@ -432,8 +448,6 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [serverKeyPreview, setServerKeyPreview] = useState(initialSettings.midtransServerKeyPreview)
   const [saving, setSaving] = useState(false)
   const [savingProducts, setSavingProducts] = useState(false)
-  const [orders, setOrders] = useState([])
-  const [ordersLoading, setOrdersLoading] = useState(true)
   const [productSearch, setProductSearch] = useState('')
   const [productCategoryFilter, setProductCategoryFilter] = useState('all')
   const [editingProduct, setEditingProduct] = useState(null)
@@ -443,19 +457,37 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [mediaUploading, setMediaUploading] = useState(false)
   const mediaFileRef = useRef(null)
 
-  async function loadOrders() {
-    setOrdersLoading(true)
-    try {
-      const res = await fetch('/api/admin/orders')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Gagal memuat pesanan.')
-      setOrders(data.orders || [])
-    } catch (error) {
-      toast.error(error.message || 'Gagal memuat pesanan.')
-    } finally {
-      setOrdersLoading(false)
+  // Cek pesanan baru yang sudah dibayar tiap 30 detik (pemberitahuan di aplikasi).
+  useEffect(() => {
+    if (!hasMongo) return undefined
+    let stop = false
+    async function check() {
+      try {
+        const res = await fetch('/api/admin/today', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (stop) return
+        setSummary(data)
+        const paid = data.counts?.dibayar || 0
+        const marker = `${paid}|${data.latestPaidAt || ''}`
+        if (seenPaid.current !== null && seenPaid.current !== marker && data.latestPaidAt) {
+          toast.success('Ada pesanan baru yang sudah dibayar!', { duration: 8000 })
+        }
+        seenPaid.current = marker
+      } catch {}
     }
-  }
+    check()
+    const t = setInterval(check, 30000)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
+  }, [hasMongo])
+
+  useEffect(() => {
+    const n = summary?.counts?.dibayar || 0
+    document.title = n > 0 ? `(${n}) Admin — Ladang Pangan` : 'Admin — Ladang Pangan'
+  }, [summary])
 
   async function loadMedia() {
     setMediaLoading(true)
@@ -472,7 +504,6 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   }
 
   useEffect(() => {
-    loadOrders()
     loadMedia()
   }, [])
 
@@ -645,8 +676,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
 
   const activeLabel = NAV_ITEMS.find((n) => n.id === tab)?.label || ''
   const promoCount = products.filter((p) => p.isPromo).length
-  const pendingOrdersCount = orders.filter((o) => o.status === 'menunggu_bayar').length
-  const paidOrdersCount = orders.filter((o) => o.status === 'dibayar').length
+  const paidBadge = summary?.counts?.dibayar || 0
+  const hideSave = !!NAV_ITEMS.find((n) => n.id === tab)?.noSave
   const productCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()
   const filteredProducts = products.filter((p) => {
     const matchesCategory = productCategoryFilter === 'all' || p.category === productCategoryFilter
@@ -675,10 +706,12 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           const Icon = item.icon
           const active = tab === item.id
           return (
+            <div key={item.id}>
+            {item.group && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-[#7E9488]">{item.group}</p>}
             <button
-              key={item.id}
               type="button"
               onClick={() => {
+                if (item.id === 'orders') setOrdersFilter('')
                 setTab(item.id)
                 onNavigate?.()
               }}
@@ -690,7 +723,11 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
             >
               <Icon className="h-4 w-4 shrink-0" />
               {item.label}
+              {item.id === 'orders' && paidBadge > 0 && (
+                <span className="ml-auto rounded-full bg-[#1E5A3A] px-2 py-0.5 text-xs font-bold text-white">{paidBadge}</span>
+              )}
             </button>
+            </div>
           )
         })}
       </nav>
@@ -719,7 +756,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   return (
     <div className="flex min-h-screen bg-[#F7FBF8]">
       {/* Sidebar (desktop) */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-[#D6EBDC] bg-white lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-[#D6EBDC] bg-white print:!hidden lg:flex">
         {navList()}
       </aside>
 
@@ -743,7 +780,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[#D6EBDC] bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 print:hidden flex items-center justify-between gap-3 border-b border-[#D6EBDC] bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -755,7 +792,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
             </button>
             <h1 className="truncate text-lg font-semibold text-[#142A1C]">{activeLabel}</h1>
           </div>
-          <button
+          {!hideSave && <button
             type="submit"
             form="settings-form"
             disabled={saving}
@@ -763,208 +800,15 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             <span className="hidden sm:inline">Simpan</span>
-          </button>
+          </button>}
         </header>
 
         <form id="settings-form" onSubmit={handleSave} className="w-full flex-1 space-y-6 px-4 py-6 sm:px-6">
-          {tab === 'overview' && (
-            <div className="mx-auto w-full max-w-3xl space-y-6">
-              {!hasMongo && (
-                <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-900">Database belum tersambung</p>
-                    <p className="mt-0.5 text-sm text-amber-800">
-                      Perubahan yang Anda simpan di sini tidak akan tersimpan permanen sampai MongoDB
-                      disambungkan. Halaman publik tetap tampil normal memakai data bawaan.
-                    </p>
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                <StatCard label="Pesanan Menunggu" value={pendingOrdersCount} tone={pendingOrdersCount > 0 ? 'bad' : 'default'} />
-                <StatCard label="Pesanan Terbayar" value={paidOrdersCount} tone="good" />
-                <StatCard label="Total Produk" value={products.length} />
-                <StatCard label="Produk Promo" value={promoCount} />
-                <StatCard label="Slide Hero" value={heroSlides.length} />
-                <StatCard
-                  label="Database"
-                  value={hasMongo ? 'Tersambung' : 'Belum'}
-                  tone={hasMongo ? 'good' : 'bad'}
-                />
-                <StatCard
-                  label="Midtrans"
-                  value={hasServerKey ? 'Aktif' : 'Belum'}
-                  tone={hasServerKey ? 'good' : 'bad'}
-                />
-                <StatCard
-                  label="Mode Pembayaran"
-                  value={isProduction ? 'Production' : 'Sandbox'}
-                  tone={isProduction ? 'good' : 'default'}
-                />
-              </div>
-              <div className={cardClass}>
-                <h2 className="text-base font-semibold text-[#142A1C]">Mulai dari sini</h2>
-                <p className="mt-1 text-sm text-[#4C6356]">
-                  Kelola tampilan dan pengaturan landing page dari menu di samping.
-                </p>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {NAV_ITEMS.filter((n) => n.id !== 'overview').map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setTab(item.id)}
-                        className="flex items-center gap-2.5 rounded-xl border border-[#D6EBDC] px-4 py-3 text-left text-sm font-medium text-[#1F3A28] transition hover:border-[#2FA966] hover:text-[#2FA966]"
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {item.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+          {tab === 'today' && <TodayPanel summary={summary} go={goTo} hasMongo={hasMongo} />}
 
-          {tab === 'orders' && (
-            <div className="mx-auto w-full max-w-3xl space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#4C6356]">
-                  {orders.length} pesanan{!hasMongo && ' — database belum tersambung, daftar akan selalu kosong'}
-                </p>
-                <button
-                  type="button"
-                  onClick={loadOrders}
-                  disabled={ordersLoading}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#D6EBDC] bg-white px-3 py-1.5 text-sm text-[#1F3A28] transition hover:border-[#2FA966] disabled:opacity-60"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${ordersLoading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
-              </div>
+          {tab === 'orders' && <OrdersPanel key={ordersFilter} initialFilter={ordersFilter} />}
 
-              {ordersLoading ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="h-6 w-6 animate-spin text-[#2FA966]" />
-                </div>
-              ) : orders.length === 0 ? (
-                <div className={`${cardClass} text-center text-sm text-[#7E9488]`}>Belum ada pesanan masuk.</div>
-              ) : (
-                <div className="space-y-3">
-                  {orders.map((o) => {
-                    const waDigits = (o.customer?.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '62')
-                    return (
-                      <div key={o.orderId} className={cardClass}>
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="font-mono text-xs text-[#7E9488]">{o.orderId}</p>
-                            <p className="text-sm text-[#4C6356]">
-                              {o.createdAt ? new Date(o.createdAt).toLocaleString('id-ID') : '-'}
-                            </p>
-                          </div>
-                          <span
-                            className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                              ORDER_STATUS_CLASS[o.status] || ORDER_STATUS_CLASS.menunggu_bayar
-                            }`}
-                          >
-                            {ORDER_STATUS_LABEL[o.status] || o.status}
-                          </span>
-                        </div>
-                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                          <div>
-                            <p className="text-sm font-medium text-[#142A1C]">{o.customer?.name}</p>
-                            <p className="mt-1 flex items-center gap-1.5 text-sm text-[#4C6356]">
-                              <Phone className="h-3.5 w-3.5 shrink-0" /> {o.customer?.phone}
-                            </p>
-                            <p className="mt-1 flex items-start gap-1.5 text-sm text-[#4C6356]">
-                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {o.customer?.address}
-                            </p>
-                            {o.delivery ? (
-                              <div className="mt-1.5 space-y-0.5 rounded-xl border border-[#D6EBDC] bg-[#F7FBF8] px-3 py-2 text-xs text-[#1F3A28]">
-                                <p className="font-semibold">
-                                  Kirim {o.delivery.mode === 'sekarang' ? 'hari ini' : 'terjadwal'}: {o.delivery.date} · {o.delivery.slotLabel} ({o.delivery.start}–{o.delivery.end})
-                                </p>
-                                {o.location && (
-                                  <p>
-                                    {o.location.zoneName} · ±{o.location.distanceKm} km ·{' '}
-                                    <a
-                                      href={`https://www.google.com/maps?q=${o.location.lat},${o.location.lng}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="font-medium text-[#22824E] underline"
-                                    >
-                                      Lihat di peta
-                                    </a>
-                                  </p>
-                                )}
-                                {o.weightKg != null && <p>Berat ±{o.weightKg} kg</p>}
-                                {o.customer?.note && <p>Catatan: {o.customer.note}</p>}
-                              </div>
-                            ) : (
-                              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#D6EBDC] bg-[#F7FBF8] px-2.5 py-1 text-xs font-medium text-[#1F3A28]">
-                                {SHIPPING_LABEL[o.shipping?.method] || 'Kurir Internal'}
-                                {o.shipping?.method === 'lainnya' && o.shipping?.note ? ` — ${o.shipping.note}` : ''}
-                              </p>
-                            )}
-                            {waDigits && (
-                              <a
-                                href={`https://wa.me/${waDigits}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#E1F4E7] px-3 py-1.5 text-xs font-medium text-[#22824E] transition hover:bg-[#2FA966] hover:text-white"
-                              >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                                Hubungi via WhatsApp
-                              </a>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-[#7E9488]">Item Pesanan</p>
-                            <ul className="mt-1.5 space-y-1">
-                              {(o.items || []).map((it, i) => (
-                                <li key={i} className="flex justify-between gap-2 text-sm text-[#1F3A28]">
-                                  <span className="truncate">
-                                    {it.qty}x {it.name}
-                                  </span>
-                                  <span className="shrink-0">{formatIDR(it.price * it.qty)}</span>
-                                </li>
-                              ))}
-                            </ul>
-                            {o.pricing && (
-                              <div className="mt-2 space-y-0.5 border-t border-dashed border-[#D6EBDC] pt-2 text-xs text-[#4C6356]">
-                                {o.pricing.discountShop > 0 && (
-                                  <p className="flex justify-between">
-                                    <span>Diskon {o.pricing.voucherCode}</span>
-                                    <span>− {formatIDR(o.pricing.discountShop)}</span>
-                                  </p>
-                                )}
-                                <p className="flex justify-between">
-                                  <span>Ongkir</span>
-                                  <span>{o.pricing.shippingFee === 0 ? 'Gratis' : formatIDR(o.pricing.shippingFee)}</span>
-                                </p>
-                                {o.pricing.shippingDiscount > 0 && (
-                                  <p className="flex justify-between">
-                                    <span>Diskon ongkir {o.pricing.voucherCode}</span>
-                                    <span>− {formatIDR(o.pricing.shippingDiscount)}</span>
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                            <div className="mt-2 flex justify-between border-t border-dashed border-[#D6EBDC] pt-2 text-sm font-medium text-[#142A1C]">
-                              <span>Total</span>
-                              <span className="text-[#2FA966]">{formatIDR(o.grossAmount)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {tab === 'kirim' && <KirimPanel today={summary?.today || wibToday()} />}
 
           {tab === 'hero' && (
             <div className={`mx-auto w-full max-w-3xl ${cardClass}`}>
@@ -1026,6 +870,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
 
           {tab === 'products' && (
             <div className="mx-auto w-full max-w-5xl space-y-4">
+              <ImportPanel onImported={() => window.location.reload()} />
               <div className={cardClass}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
