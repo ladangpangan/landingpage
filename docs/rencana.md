@@ -70,3 +70,4 @@ Tugas pertama:
 
 * **Admin (disetujui 2026-10-05): pilihan C, tata ulang menu admin.** Halaman pertama "Hari ini" (pesanan baru, sudah dibayar belum dikemas, stok menipis/habis, pesanan perlu dicek). Menu dikelompokkan: Hari ini, Pesanan, Daftar Kirim Kurir, Produk & Paket, Pengaturan. Dikerjakan di **Tahap 4**. Di Tahap 2 admin hanya ditambah kolom Stok.
 * **Tahap 2 (disetujui):** 3 paket contoh dan resep contoh dulu (bertanda "contoh"); paket dan resep asli diisi pemilik di Tahap 4.
+* **Halaman Paket di admin dimajukan (2026-10-05):** pengelolaan Paket Hemat/Masak (isi, harga, foto, resep) dibuat lebih awal dari Tahap 4, karena pemilik sudah mulai mengisi produk asli. Zona, voucher, daftar kirim kurir tetap di tahap masing-masing.
