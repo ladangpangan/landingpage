@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getSnapClient } from '@/lib/midtrans'
 import { getLandingSettings } from '@/lib/db'
-import { getActiveBundles } from '@/lib/bundles'
-import { resolveCartLines } from '@/lib/cart-math'
+import { evaluateCheckout } from '@/lib/checkout-service'
+import { buildMidtransItems } from '@/lib/checkout-math'
 import { reserveStock, releaseStock } from '@/lib/stock'
+import { reserveSlot, releaseSlot } from '@/lib/delivery'
+import { reserveVoucher, releaseVoucher } from '@/lib/vouchers'
 import { createOrder, attachSnapToken, failOrderBeforePayment } from '@/lib/orders'
 import { syncOrderToErp } from '@/lib/erp-sync'
+
+const BUSY = 'Pesanan belum bisa diproses. Silakan coba lagi sebentar lagi.'
 
 export async function POST(request) {
   let body
@@ -15,76 +19,109 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Body permintaan tidak valid.' }, { status: 400 })
   }
 
-  const { items, customer, shipping } = body || {}
+  const { items, customer } = body || {}
 
   if (!Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: 'Keranjang belanja kosong.' }, { status: 400 })
   }
   if (!customer?.name?.trim() || !customer?.phone?.trim() || !customer?.address?.trim()) {
     return NextResponse.json(
-      { error: 'Nama, nomor WhatsApp, dan lokasi pengiriman wajib diisi.' },
+      { error: 'Nama, nomor WhatsApp, dan alamat lengkap wajib diisi.' },
       { status: 400 }
     )
   }
 
-  const SHIPPING_METHODS = ['internal', 'gosend', 'grabexpress', 'lainnya']
-  const shippingMethod = SHIPPING_METHODS.includes(shipping?.method) ? shipping.method : 'internal'
-  const shippingNote = String(shipping?.note || '').trim().slice(0, 200)
-  if (shippingMethod === 'lainnya' && !shippingNote) {
-    return NextResponse.json({ error: 'Catatan pengiriman wajib diisi untuk metode "Lainnya".' }, { status: 400 })
+  // Harga, isi paket, stok, ongkir, voucher, dan jadwal SELALU dihitung server;
+  // angka dari browser diabaikan.
+  let ctx
+  try {
+    ctx = await evaluateCheckout({ items, location: body.location, voucherCode: body.voucherCode, delivery: body.delivery })
+  } catch (error) {
+    console.error('[checkout] gagal menghitung:', error?.message || error)
+    return NextResponse.json({ error: BUSY }, { status: 503 })
   }
+  if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: 400 })
+  if (!ctx.zoneResult.ok) return NextResponse.json({ error: ctx.zoneResult.error, code: ctx.zoneResult.code }, { status: 400 })
+  if (ctx.voucherError) return NextResponse.json({ error: ctx.voucherError }, { status: 400 })
+  if (!ctx.deliveryResolved?.ok) return NextResponse.json({ error: ctx.deliveryResolved?.error || 'Pilih cara pengiriman.' }, { status: 409 })
+  if (!(ctx.pricing.total > 0)) return NextResponse.json({ error: 'Total pembayaran tidak valid.' }, { status: 400 })
 
-  // Harga, isi paket, dan stok SELALU dari server; angka dari browser diabaikan.
-  const settings = await getLandingSettings()
-  const bundles = await getActiveBundles()
-  const productsById = new Map(settings.products.map((p) => [p.id, p]))
-  const bundlesById = new Map(bundles.map((b) => [b.id, b]))
-  const cart = resolveCartLines(
-    items.map((it) => ({ kind: it?.kind, id: it?.productId, qty: it?.qty })),
-    productsById,
-    bundlesById
-  )
-  if (!cart.ok) {
-    return NextResponse.json({ error: cart.error }, { status: 400 })
-  }
-
-  const itemDetails = cart.lines.map((l) => ({
-    id: l.id,
-    name: l.name.slice(0, 50),
-    price: l.price,
-    quantity: l.qty,
-  }))
-  const orderItems = cart.lines
-
-  const grossAmount = itemDetails.reduce((sum, it) => sum + it.price * it.quantity, 0)
+  const orderItems = ctx.cart.lines
+  const grossAmount = ctx.pricing.total
+  const itemDetails = buildMidtransItems(orderItems, ctx.pricing)
   const orderId = `LPI-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
 
   const orderCustomer = {
     name: customer.name.trim().slice(0, 50),
     phone: customer.phone.trim().slice(0, 30),
     address: customer.address.trim().slice(0, 200),
+    note: String(customer.note || '').trim().slice(0, 200),
   }
-  const shippingInfo = { method: shippingMethod, note: shippingNote }
+  const z = ctx.zoneResult
+  const d = ctx.deliveryResolved
+  const location = {
+    lat: Number(body.location.lat),
+    lng: Number(body.location.lng),
+    distanceKm: z.distanceKm,
+    zoneId: z.zone.id,
+    zoneName: z.zone.name,
+  }
+  const deliveryInfo = { mode: d.mode, date: d.date, slotId: d.slotId, slotLabel: d.slotLabel, start: d.start, end: d.end }
+  const shippingInfo = { method: 'internal', note: `${z.zone.name} (${z.distanceKm} km), ${d.date} ${d.slotLabel}` }
 
-  // 1) Tahan stok (atomik), lalu simpan pesanan. Bila gagal, pembeli belum ditagih apa pun.
-  let reservation
+  // 1) Tahan stok, kapasitas slot kirim, dan kuota voucher (masing-masing atomik).
+  //    Bila salah satu gagal, yang sudah ditahan dikembalikan. Pembeli belum ditagih apa pun.
+  let stock
   try {
-    reservation = await reserveStock(cart.requirements)
+    stock = await reserveStock(ctx.cart.requirements)
   } catch (error) {
     console.error('[checkout] gagal menahan stok:', error?.message || error)
-    return NextResponse.json(
-      { error: 'Pesanan belum bisa diproses. Silakan coba lagi sebentar lagi.' },
-      { status: 503 }
-    )
+    return NextResponse.json({ error: BUSY }, { status: 503 })
   }
-  if (!reservation.ok) {
-    const short = productsById.get(reservation.variantId)
+  if (!stock.ok) {
+    const products = (await getLandingSettings()).products
+    const short = products.find((p) => p.id === stock.variantId)
     return NextResponse.json(
       { error: `Maaf, stok ${short ? `"${short.name}"` : 'salah satu produk'} tidak cukup. Kurangi jumlahnya atau hapus dari keranjang.` },
       { status: 409 }
     )
   }
+  const undo = async (slotRes, voucherCode) => {
+    await releaseStock(stock.reserved).catch(() => {})
+    if (slotRes) await releaseSlot(slotRes).catch(() => {})
+    if (voucherCode) await releaseVoucher(voucherCode).catch(() => {})
+  }
 
+  let slotRes
+  try {
+    const r = await reserveSlot({ date: d.date, slotId: d.slotId, kg: ctx.weightKg, capacityKg: ctx.capacityKg })
+    if (!r.ok) {
+      await undo(null, null)
+      return NextResponse.json({ error: 'Maaf, jam pengiriman itu baru saja penuh. Silakan pilih jam lain.' }, { status: 409 })
+    }
+    slotRes = r
+  } catch (error) {
+    console.error('[checkout] gagal menahan slot kirim:', error?.message || error)
+    await undo(null, null)
+    return NextResponse.json({ error: BUSY }, { status: 503 })
+  }
+
+  let voucherCode = null
+  if (ctx.pricing.voucherCode) {
+    try {
+      if (!(await reserveVoucher(ctx.pricing.voucherCode))) {
+        await undo(slotRes, null)
+        return NextResponse.json({ error: 'Maaf, kuota voucher baru saja habis.' }, { status: 409 })
+      }
+      voucherCode = ctx.pricing.voucherCode
+    } catch (error) {
+      console.error('[checkout] gagal memakai voucher:', error?.message || error)
+      await undo(slotRes, null)
+      return NextResponse.json({ error: BUSY }, { status: 503 })
+    }
+  }
+
+  // 2) Simpan pesanan dulu, baru buat transaksi pembayaran.
   try {
     await createOrder({
       orderId,
@@ -92,18 +129,17 @@ export async function POST(request) {
       customer: orderCustomer,
       shipping: shippingInfo,
       grossAmount,
-      stockReservation: reservation.reserved,
+      stockReservation: stock.reserved,
+      extra: { weightKg: ctx.weightKg, pricing: ctx.pricing, delivery: deliveryInfo, location, slotReservation: slotRes, voucherCode },
     })
   } catch (error) {
     console.error('[checkout] gagal menyimpan pesanan:', error?.message || error)
-    await releaseStock(reservation.reserved).catch(() => {})
-    return NextResponse.json(
-      { error: 'Pesanan belum bisa disimpan. Silakan coba lagi sebentar lagi.' },
-      { status: 503 }
-    )
+    await undo(slotRes, voucherCode)
+    return NextResponse.json({ error: 'Pesanan belum bisa disimpan. Silakan coba lagi sebentar lagi.' }, { status: 503 })
   }
 
-  // 2) Baru buat transaksi pembayaran.
+  // 3) Transaksi pembayaran. Bila gagal, pesanan ditandai gagal dan semua yang
+  //    ditahan (stok, slot, voucher) dikembalikan lewat transisi status.
   try {
     const snap = await getSnapClient()
     const transaction = await snap.createTransaction({
@@ -112,7 +148,7 @@ export async function POST(request) {
         gross_amount: grossAmount,
       },
       item_details: itemDetails,
-      // Pesanan yang tidak dibayar kedaluwarsa dalam 1 jam, stoknya dikembalikan.
+      // Pesanan yang tidak dibayar kedaluwarsa dalam 1 jam; stok, slot, dan voucher dikembalikan.
       expiry: { unit: 'minutes', duration: 60 },
       customer_details: {
         first_name: orderCustomer.name,
@@ -127,7 +163,14 @@ export async function POST(request) {
 
     // Fire-and-forget: never let a slow/failing ERP sync delay or break
     // checkout. No-ops silently until ERP_INTEGRATION_URL/KEY are set.
-    syncOrderToErp({ orderId, items: orderItems, customer: orderCustomer, shipping: shippingInfo, grossAmount })
+    syncOrderToErp({
+      orderId,
+      items: orderItems,
+      customer: orderCustomer,
+      shipping: shippingInfo,
+      grossAmount,
+      extra: { delivery: deliveryInfo, location, pricing: ctx.pricing, weightKg: ctx.weightKg },
+    })
 
     return NextResponse.json({
       orderId,
