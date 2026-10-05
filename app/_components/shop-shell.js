@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import SafeImage from './safe-image'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { MapPin, MessageCircle, Search, ShoppingCart, ShieldCheck, X } from 'lucide-react'
@@ -44,7 +45,7 @@ function CartDrawer({ open, onClose, waLink }) {
                 return (
                   <div key={`${kind}:${it.productId}`} className="flex gap-3 rounded-2xl border border-lpi-line bg-white p-3">
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-lpi-light">
-                      <Image src={it.image} alt={it.name} fill sizes="64px" className="object-cover" />
+                      <SafeImage src={it.image} alt={it.name} fill sizes="64px" className="object-cover" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-sm font-semibold text-lpi-ink">{it.name}</p>

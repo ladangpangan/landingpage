@@ -326,7 +326,7 @@ function StatCard({ label, value, tone = 'default' }) {
   )
 }
 
-export default function SettingsForm({ initialSettings, availableImages, bundledImages, hasMongo, admin }) {
+export default function SettingsForm({ initialSettings, availableImages, hasMongo, admin }) {
   const isOwner = admin?.role === 'owner'
   const router = useRouter()
   const [tab, setTab] = useState('overview')
@@ -1099,22 +1099,6 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
                   </div>
                 )}
               </div>
-
-              {bundledImages?.length > 0 && (
-                <div className={cardClass}>
-                  <h2 className="text-sm font-semibold text-[#142A1C]">Foto Bawaan</h2>
-                  <p className="mt-1 text-xs text-[#7E9488]">
-                    Foto contoh dari template — sudah menempel di kode, tidak bisa dihapus dari sini.
-                  </p>
-                  <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5 md:grid-cols-6">
-                    {bundledImages.map((src) => (
-                      <div key={src} className="relative aspect-square overflow-hidden rounded-lg border border-[#D6EBDC] opacity-80">
-                        <Image src={src} alt="" fill sizes="120px" className="object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

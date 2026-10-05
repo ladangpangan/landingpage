@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
+import SafeImage from './safe-image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function HeroCarousel({ slides }) {
@@ -38,7 +38,7 @@ export default function HeroCarousel({ slides }) {
         {slides.map((slide, i) => (
           <div key={slide.id} className="relative h-[340px] w-full shrink-0 overflow-hidden sm:h-[420px] lg:h-[460px]">
             {slide.image ? (
-              <Image src={slide.image} alt={slide.title} fill sizes="100vw" priority={i === 0} className="object-cover" />
+              <SafeImage src={slide.image} alt={slide.title} fill sizes="100vw" priority={i === 0} className="object-cover" />
             ) : (
               <div className="absolute inset-0 bg-lpi-light" />
             )}

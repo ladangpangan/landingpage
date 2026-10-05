@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import SafeImage from '../../_components/safe-image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
@@ -48,7 +48,7 @@ export default async function BundlePage({ params }) {
 
         <div className="mt-2 grid gap-6 sm:grid-cols-2">
           <div className="relative aspect-square overflow-hidden rounded-3xl bg-lpi-light">
-            <Image
+            <SafeImage
               src={bundle.image}
               alt={bundle.name}
               fill
@@ -95,7 +95,7 @@ export default async function BundlePage({ params }) {
             {bundle.items.map((it) => (
               <li key={it.id} className="flex items-center gap-3 py-3">
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-lpi-light">
-                  {it.image && <Image src={it.image} alt={it.name} fill sizes="56px" className="object-cover" />}
+                  {it.image && <SafeImage src={it.image} alt={it.name} fill sizes="56px" className="object-cover" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <Link href={`/produk/${it.id}`} className="line-clamp-2 text-sm font-semibold text-lpi-ink">

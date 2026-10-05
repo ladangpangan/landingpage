@@ -43,6 +43,15 @@ sama), `MONGO_DB_NAME`, `ADMIN_OWNER_EMAIL`, `ADMIN_PASSWORD`,
 `ADMIN_SESSION_SECRET`, `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`,
 `MIDTRANS_IS_PRODUCTION`, `ERP_INTEGRATION_URL`, `ERP_INTEGRATION_KEY`.
 
+### Foto yang diunggah (volume `uploads_data`)
+
+Foto produk yang diunggah lewat admin disimpan di volume `uploads_data`, bukan di
+database. Saat data dipindah antar server (mis. KVM 1 ke KVM 2), database ikut
+tetapi foto TIDAK otomatis ikut: produk masih menunjuk ke berkas yang tidak ada
+(`/api/uploads/...` kode 404). Tampilan toko menampilkan kotak ikon sebagai
+pengganti; unggah ulang fotonya lewat admin. Foto bawaan template
+(`public/landing/*`) tetap ada karena logo dan hero memakainya.
+
 ### Backup dan kembali ke versi lama
 
 - Backup: snapshot KVM 2 lewat hPanel atau `vps_snapshots_create` (menimpa
