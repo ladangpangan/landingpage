@@ -127,11 +127,14 @@ export default function BiteshipPanel() {
 
       <div className="space-y-3 rounded-2xl border border-lpi-line bg-white p-5">
         <h3 className="text-sm font-bold">Kabar status pengiriman (webhook)</h3>
-        <p className="text-xs text-lpi-muted">Supaya status pesanan bergerak sendiri (Dikirim, Diterima) saat kurir menjemput dan mengantar. Karang teks acak panjang sebagai token, simpan, lalu daftarkan alamat di bawah di dashboard Biteship.</p>
+        <p className="text-xs text-lpi-muted">Supaya status pesanan bergerak sendiri (Dikirim, Diterima) saat kurir menjemput dan mengantar. Karang teks acak panjang sebagai token, simpan, lalu daftarkan webhook di dashboard Biteship dengan isian di bawah.</p>
         <input type="password" autoComplete="off" className={input} value={webhookToken} onChange={(e) => setWebhookToken(e.target.value)} placeholder={data.hasWebhookToken ? 'Token tersimpan — kosongkan untuk mempertahankan' : 'Token acak (min. 24 huruf/angka)'} />
-        <div className="rounded-xl bg-lpi-bg p-3 text-xs">
-          <p className="font-semibold">Alamat webhook:</p>
-          <p className="mt-1 break-all font-mono">https://marketplace.ladangpangan.id/api/biteship/webhook?token=<i>(token Anda)</i></p>
+        <div className="rounded-xl bg-lpi-bg p-3 text-xs space-y-1">
+          <p className="font-semibold">Isi di dashboard Biteship (Integrasi → Webhook → Tambah Webhook):</p>
+          <p>URL Webhook: <span className="break-all font-mono">https://marketplace.ladangpangan.id/api/biteship/webhook</span></p>
+          <p>Headers Signature Key: <span className="font-mono">x-webhook-token</span></p>
+          <p>Headers Signature Secret: <i>(token yang sama dengan di atas)</i></p>
+          <p>Event: pilih semua event pesanan (status, resi, harga).</p>
         </div>
         <p className="text-xs font-semibold">Kabar terakhir dari Biteship</p>
         {events.length === 0 ? (
