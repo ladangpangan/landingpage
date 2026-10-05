@@ -109,3 +109,9 @@ test('token webhook dibandingkan aman', () => {
   assert.ok(!verifyWebhookToken('', 'abc'))
   assert.ok(!verifyWebhookToken('a', ''))
 })
+
+test('contoh balasan resmi Biteship (get order) dibaca benar', () => {
+  const r = extractBiteshipOrder({ success: true, object: 'order', id: '5dd599ebdefcd4158eb8470b', price: 27500, status: 'allocated', courier: { tracking_id: '65ddac3879699035b83dc561', waybill_id: 'WYB-1112223333442', company: 'jnt', link: 'https://example.com/10298309123809', driver_name: 'John Doe', driver_phone: '0888888888', type: 'instant', shipment_fee: 25000, history: [{ status: 'confirmed' }, { status: 'allocated' }] } })
+  assert.deepEqual([r.id, r.status, r.trackingId, r.waybillId, r.price, r.driverName], ['5dd599ebdefcd4158eb8470b', 'allocated', '65ddac3879699035b83dc561', 'WYB-1112223333442', 27500, 'John Doe'])
+  assert.equal(extractBiteshipOrder({ id: 'a', courier: { shipment_fee: 25000 } }).price, 25000)
+})
