@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, MapPin, MessageCircle, Phone, Printer } from 'lucide-react'
+import { Loader2, MapPin, MessageCircle, Phone, Printer, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatIDR } from '@/lib/format'
 import { adminNextActions } from '@/lib/order-status'
@@ -47,6 +47,25 @@ export function OrderCard({ order: o, onChanged, compact = false }) {
   const [busy, setBusy] = useState(false)
   const waDigits = (o.customer?.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '62')
   const actions = adminNextActions(o.status)
+
+  const viaBiteship = o.shipping?.method === 'biteship'
+  const canCall = viaBiteship && o.status === 'dikemas' && (!o.courier?.biteshipId || ['rejected', 'courier_not_found', 'cancelled'].includes(o.courier.status))
+
+  async function callCourier() {
+    if (!window.confirm('Panggil kurir instan sekarang? Pastikan barang sudah siap dijemput.')) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(o.orderId)}/kurir`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Gagal memanggil kurir.')
+      toast.success('Kurir dipanggil. Pantau statusnya di kartu pesanan.')
+    } catch (e) {
+      toast.error(e.message || 'Gagal memanggil kurir.')
+    } finally {
+      setBusy(false)
+      onChanged?.()
+    }
+  }
 
   async function setStatus(to) {
     if (to === 'batal' && !window.confirm('Batalkan pesanan ini? Stok yang ditahan akan dikembalikan.')) return
@@ -139,8 +158,23 @@ export function OrderCard({ order: o, onChanged, compact = false }) {
         </div>
       </div>
 
-      {(actions.length > 0 || ['dibayar', 'dikemas', 'dikirim'].includes(o.status)) && (
+      {viaBiteship && o.courier?.biteshipId && (
+        <div className="mt-3 space-y-0.5 rounded-xl border border-lpi-line bg-lpi-light px-3 py-2 text-xs text-lpi-ink">
+          <p className="flex items-center gap-1.5 font-semibold"><Truck className="h-3.5 w-3.5" /> Kurir: {o.shipping?.courier?.name} {o.shipping?.courier?.serviceName} · status {o.courier.status || '-'}</p>
+          {o.courier.waybillId && <p>Resi: {o.courier.waybillId}</p>}
+          {o.courier.driverName && <p>Pengemudi: {o.courier.driverName} {o.courier.driverPhone}</p>}
+          {o.courier.price != null && <p>Biaya kurir: {formatIDR(o.courier.price)} (ongkir dibayar pembeli {formatIDR(o.pricing?.shippingFee || 0)})</p>}
+          {o.courier.link && <a href={o.courier.link} target="_blank" rel="noopener noreferrer" className="font-semibold text-lpi underline">Lacak kurir</a>}
+        </div>
+      )}
+
+      {(actions.length > 0 || canCall || ['dibayar', 'dikemas', 'dikirim'].includes(o.status)) && (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-lpi-line pt-3 print:hidden">
+          {canCall && (
+            <button type="button" disabled={busy} onClick={callCourier} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-lpi px-4 text-sm font-semibold text-white hover:bg-lpi-dark disabled:opacity-60">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />} Panggil Kurir
+            </button>
+          )}
           {actions.map((to) => (
             <button
               key={to}

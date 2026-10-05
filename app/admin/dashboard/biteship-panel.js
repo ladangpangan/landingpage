@@ -11,6 +11,8 @@ const input = 'h-11 w-full rounded-xl border border-lpi-line bg-white px-3 text-
 export default function BiteshipPanel() {
   const [data, setData] = useState(null)
   const [apiKey, setApiKey] = useState('')
+  const [webhookToken, setWebhookToken] = useState('')
+  const [events, setEvents] = useState([])
   const [enabled, setEnabled] = useState(false)
   const [allowed, setAllowed] = useState([])
   const [origin, setOrigin] = useState({ contactName: '', contactPhone: '', contactEmail: '', address: '', note: '' })
@@ -23,16 +25,18 @@ export default function BiteshipPanel() {
     setAllowed(d.allowed || [])
     setOrigin(d.origin)
     setApiKey('')
+    setWebhookToken('')
   }
 
   useEffect(() => {
+    fetch('/api/admin/payment-events').then((r) => r.json()).then((d) => setEvents((d.events || []).filter((e) => e.gateway === 'biteship'))).catch(() => {})
     fetch('/api/admin/biteship').then((r) => r.json()).then((d) => (d.error ? toast.error(d.error) : apply(d))).catch(() => toast.error('Gagal memuat.'))
   }, [])
 
   async function save() {
     setBusy(true)
     try {
-      const res = await fetch('/api/admin/biteship', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, enabled, allowed, origin }) })
+      const res = await fetch('/api/admin/biteship', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, webhookToken, enabled, allowed, origin }) })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error || 'Gagal menyimpan.')
       apply(d)
@@ -115,6 +119,29 @@ export default function BiteshipPanel() {
                   <span className="flex-1"><b>{o.name}</b> {o.serviceName} <span className="font-mono text-xs text-lpi-muted">({o.key})</span></span>
                   {o.price != null && <span className="shrink-0 font-semibold">{formatIDR(o.price)}</span>}
                 </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-lpi-line bg-white p-5">
+        <h3 className="text-sm font-bold">Kabar status pengiriman (webhook)</h3>
+        <p className="text-xs text-lpi-muted">Supaya status pesanan bergerak sendiri (Dikirim, Diterima) saat kurir menjemput dan mengantar. Karang teks acak panjang sebagai token, simpan, lalu daftarkan alamat di bawah di dashboard Biteship.</p>
+        <input type="password" autoComplete="off" className={input} value={webhookToken} onChange={(e) => setWebhookToken(e.target.value)} placeholder={data.hasWebhookToken ? 'Token tersimpan — kosongkan untuk mempertahankan' : 'Token acak (min. 24 huruf/angka)'} />
+        <div className="rounded-xl bg-lpi-bg p-3 text-xs">
+          <p className="font-semibold">Alamat webhook:</p>
+          <p className="mt-1 break-all font-mono">https://marketplace.ladangpangan.id/api/biteship/webhook?token=<i>(token Anda)</i></p>
+        </div>
+        <p className="text-xs font-semibold">Kabar terakhir dari Biteship</p>
+        {events.length === 0 ? (
+          <p className="text-xs text-lpi-muted">Belum ada.</p>
+        ) : (
+          <ul className="space-y-2">
+            {events.map((e, i) => (
+              <li key={i} className="rounded-lg border border-lpi-line p-2 text-xs">
+                <p className="font-semibold">{new Date(e.at).toLocaleString('id-ID')} · {e.outcome}</p>
+                <p className="mt-1 break-all font-mono text-[11px] text-lpi-muted">{e.payload}</p>
               </li>
             ))}
           </ul>

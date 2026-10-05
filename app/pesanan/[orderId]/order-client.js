@@ -181,6 +181,15 @@ export default function OrderClient({ orderId, accessKey, waLink, midtransClient
               </section>
             )}
 
+            {order.courierTrack && (
+              <section className="rounded-2xl border border-lpi-line bg-white p-4 text-sm">
+                <h3 className="font-extrabold">Kurir instan</h3>
+                <p className="mt-1 text-lpi-muted">{order.courierTrack.driverName ? `Pengemudi: ${order.courierTrack.driverName}${order.courierTrack.driverPhone ? ` · ${order.courierTrack.driverPhone}` : ''}` : 'Kurir sedang dicarikan atau dalam perjalanan.'}</p>
+                {order.courierTrack.waybillId && <p className="text-lpi-muted">Resi: {order.courierTrack.waybillId}</p>}
+                {order.courierTrack.link && <a href={order.courierTrack.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center rounded-xl border border-lpi-line px-4 font-bold text-lpi">Lacak kurir</a>}
+              </section>
+            )}
+
             <section className="rounded-2xl border border-lpi-line bg-white p-4 text-sm">
               <h3 className="font-extrabold">Isi pesanan</h3>
               <ul className="mt-2 space-y-1.5">
