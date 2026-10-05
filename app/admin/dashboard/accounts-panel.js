@@ -13,6 +13,17 @@ const buttonClass =
 
 const ROLE_LABEL = { owner: 'Owner', staf: 'Staf' }
 
+// Panel ini tampil DI DALAM <form> besar halaman admin (tombol Simpan pengaturan).
+// <form> bersarang tidak sah dan membuat tombol "submit" menyimpan pengaturan,
+// bukan menjalankan aksi akun. Karena itu di sini tombol bertipe "button" dan
+// tombol Enter ditangani sendiri.
+function enterToSubmit(e, action) {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+    e.preventDefault()
+    action()
+  }
+}
+
 async function api(url, method, body) {
   const res = await fetch(url, {
     method,
@@ -30,8 +41,7 @@ function ChangePassword() {
   const [next, setNext] = useState('')
   const [busy, setBusy] = useState(false)
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     setBusy(true)
     try {
       await api('/api/admin/me/password', 'POST', { currentPassword: current, newPassword: next })
@@ -46,7 +56,7 @@ function ChangePassword() {
   }
 
   return (
-    <form onSubmit={submit} className={`${cardClass} space-y-3`}>
+    <div onKeyDown={(e) => enterToSubmit(e, submit)} className={`${cardClass} space-y-3`}>
       <h2 className="text-base font-semibold text-[#142A1C]">Ganti password saya</h2>
       <input
         type="password"
@@ -66,10 +76,10 @@ function ChangePassword() {
         onChange={(e) => setNext(e.target.value)}
         required
       />
-      <button type="submit" disabled={busy} className={buttonClass}>
+      <button type="button" onClick={submit} disabled={busy} className={buttonClass}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Simpan password baru'}
       </button>
-    </form>
+    </div>
   )
 }
 
@@ -93,8 +103,7 @@ function ManageUsers({ me }) {
     load()
   }, [])
 
-  async function create(e) {
-    e.preventDefault()
+  async function create() {
     setBusy(true)
     try {
       await api('/api/admin/users', 'POST', form)
@@ -168,7 +177,7 @@ function ManageUsers({ me }) {
         )}
       </div>
 
-      <form onSubmit={create} className={`${cardClass} space-y-3`}>
+      <div onKeyDown={(e) => enterToSubmit(e, create)} className={`${cardClass} space-y-3`}>
         <h2 className="text-base font-semibold text-[#142A1C]">Tambah akun</h2>
         <input className={inputClass} placeholder="Nama" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input
@@ -192,10 +201,10 @@ function ManageUsers({ me }) {
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
-        <button type="submit" disabled={busy} className={buttonClass}>
+        <button type="button" onClick={create} disabled={busy} className={buttonClass}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buat akun'}
         </button>
-      </form>
+      </div>
     </>
   )
 }
