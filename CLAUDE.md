@@ -11,7 +11,7 @@ Rencana lengkap ada di `docs/rencana.md`. Cara deploy ada di `DEPLOYMENT.md`.
 - Satu branch baru per tahap, lalu Pull Request. Jangan pernah ubah `main` langsung.
 - Harga, ongkir, diskon, stok, kapasitas kirim: SELALU dihitung di server (jangan percaya angka dari browser).
 - Jangan tulis password/kunci rahasia di kode. Rahasia hanya lewat environment variable di VPS.
-- Jangan ganti teknologi: Next.js 15, Tailwind, MongoDB, Midtrans, Docker.
+- Jangan ganti teknologi: Next.js 15, Tailwind, MongoDB, Docker. Pembayaran: Midtrans dan Mayar.id (pilihan Owner di admin; Mayar disetujui pemilik karena review bisnis Midtrans belum selesai).
 - Selama pengembangan pakai Midtrans SANDBOX; PRODUCTION hanya saat pemilik bilang siap rilis.
 - Sebelum memasang ke VPS: pandu pemilik membuat backup sederhana dan tuliskan cara kembali ke versi lama.
 - Aplikasi belum rilis & tanpa pembeli sungguhan: boleh ubah besar-besaran. Data contoh boleh dibuang; yang dipertahankan hanya logo, nomor WhatsApp, kunci Midtrans.

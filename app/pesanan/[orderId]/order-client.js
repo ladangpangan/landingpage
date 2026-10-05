@@ -199,6 +199,9 @@ export default function OrderClient({ orderId, accessKey, waLink, midtransClient
             </section>
 
             <div className="space-y-2">
+              {order.payUrl && (
+                <a href={order.payUrl} className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-lpi text-base font-bold text-white hover:bg-lpi-dark">Bayar Sekarang</a>
+              )}
               {needsPay && (
                 <button type="button" onClick={payNow} className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-lpi text-base font-bold text-white hover:bg-lpi-dark">Bayar Sekarang</button>
               )}

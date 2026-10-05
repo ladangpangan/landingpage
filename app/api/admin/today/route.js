@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
-import { todaySummary } from '@/lib/orders'
+import { todaySummary, expireStaleMayarOrders } from '@/lib/orders'
 import { getFlatProducts } from '@/lib/catalog'
 import { wibNow } from '@/lib/shipping'
 
@@ -9,6 +9,7 @@ export async function GET() {
   const { error } = await requireAdmin()
   if (error) return error
   try {
+    await expireStaleMayarOrders().catch(() => {})
     const today = wibNow().date
     const [summary, products] = await Promise.all([todaySummary(today), getFlatProducts()])
     const soldOut = products.filter((p) => p.stock === 0).map((p) => p.name)
