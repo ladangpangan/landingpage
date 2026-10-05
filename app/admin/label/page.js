@@ -47,7 +47,7 @@ export default async function LabelPage({ searchParams }) {
               <p className="font-bold">{o.customer.phone}</p>
               <p className="mt-1">{o.customer.address}</p>
               {o.customer.note && <p className="mt-1 italic">Catatan: {o.customer.note}</p>}
-              {o.location && <p className="mt-1 text-xs">{o.location.zoneName} · ±{o.location.distanceKm} km</p>}
+              {o.location && <p className="mt-1 text-xs">{o.location.zoneName}{o.location.distanceKm != null ? ` · ±${o.location.distanceKm} km` : ""}</p>}
             </div>
             <div className="border-t border-dashed border-black pt-2">
               <ul className="space-y-0.5">

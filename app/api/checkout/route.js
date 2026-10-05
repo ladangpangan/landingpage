@@ -10,6 +10,7 @@ import { createOrder, attachSnapToken, failOrderBeforePayment, attachMayarInvoic
 import { getMayarConfig, createMayarInvoice } from '@/lib/mayar-api'
 import { buildInvoiceBody } from '@/lib/mayar'
 import { siteOrigin } from '@/lib/site-url'
+import { validLatLng, wibNow } from '@/lib/shipping'
 import { syncOrderToErp } from '@/lib/erp-sync'
 import { accessKey } from '@/lib/order-access'
 import { getCurrentCustomer } from '@/lib/customer-session'
@@ -49,15 +50,27 @@ export async function POST(request) {
   // angka dari browser diabaikan.
   let ctx
   try {
-    ctx = await evaluateCheckout({ items, location: body.location, voucherCode: body.voucherCode, delivery: body.delivery })
+    ctx = await evaluateCheckout({ items, location: body.location, voucherCode: body.voucherCode, delivery: body.delivery, shipping: body.shipping })
   } catch (error) {
     console.error('[checkout] gagal menghitung:', error?.message || error)
     return NextResponse.json({ error: BUSY }, { status: 503 })
   }
   if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: 400 })
-  if (!ctx.zoneResult.ok) return NextResponse.json({ error: ctx.zoneResult.error, code: ctx.zoneResult.code }, { status: 400 })
+  const viaBiteship = ctx.shippingMethod === 'biteship'
+  if (viaBiteship) {
+    const chosen = ctx.biteship.chosen
+    if (!chosen) return NextResponse.json({ error: ctx.biteship.error || 'Pilih kurir instan.' }, { status: 409 })
+    // Tarif Biteship bisa berubah; pembeli harus menyetujui tarif terbaru sebelum bayar.
+    const expected = Number(body.shipping?.expectedFee)
+    if (!Number.isFinite(expected) || expected !== chosen.price) {
+      return NextResponse.json({ error: `Tarif kurir berubah menjadi Rp ${chosen.price.toLocaleString('id-ID')}. Silakan cek lagi lalu bayar.` }, { status: 409 })
+    }
+    if (!validLatLng(body.location)) return NextResponse.json({ error: 'Bagikan lokasi Anda dulu.' }, { status: 400 })
+  } else {
+    if (!ctx.zoneResult.ok) return NextResponse.json({ error: ctx.zoneResult.error, code: ctx.zoneResult.code }, { status: 400 })
+  }
   if (ctx.voucherError) return NextResponse.json({ error: ctx.voucherError }, { status: 400 })
-  if (!ctx.deliveryResolved?.ok) return NextResponse.json({ error: ctx.deliveryResolved?.error || 'Pilih cara pengiriman.' }, { status: 409 })
+  if (!viaBiteship && !ctx.deliveryResolved?.ok) return NextResponse.json({ error: ctx.deliveryResolved?.error || 'Pilih cara pengiriman.' }, { status: 409 })
   if (!(ctx.pricing.total > 0)) return NextResponse.json({ error: 'Total pembayaran tidak valid.' }, { status: 400 })
 
   const orderItems = ctx.cart.lines
@@ -73,15 +86,25 @@ export async function POST(request) {
   }
   const z = ctx.zoneResult
   const d = ctx.deliveryResolved
-  const location = {
-    lat: Number(body.location.lat),
-    lng: Number(body.location.lng),
-    distanceKm: z.distanceKm,
-    zoneId: z.zone.id,
-    zoneName: z.zone.name,
+  let location
+  let deliveryInfo
+  let shippingInfo
+  if (viaBiteship) {
+    const c = ctx.biteship.chosen
+    location = { lat: Number(body.location.lat), lng: Number(body.location.lng), distanceKm: null, zoneId: null, zoneName: 'Kurir instan' }
+    deliveryInfo = { mode: 'biteship', date: wibNow().date, slotId: null, slotLabel: `${c.name} ${c.serviceName}`.trim(), start: null, end: null }
+    shippingInfo = { method: 'biteship', note: `${c.name} ${c.serviceName}`.trim(), courier: { key: c.key, company: c.company, type: c.type, name: c.name, serviceName: c.serviceName, price: c.price } }
+  } else {
+    location = {
+      lat: Number(body.location.lat),
+      lng: Number(body.location.lng),
+      distanceKm: z.distanceKm,
+      zoneId: z.zone.id,
+      zoneName: z.zone.name,
+    }
+    deliveryInfo = { mode: d.mode, date: d.date, slotId: d.slotId, slotLabel: d.slotLabel, start: d.start, end: d.end }
+    shippingInfo = { method: 'internal', note: `${z.zone.name} (${z.distanceKm} km), ${d.date} ${d.slotLabel}` }
   }
-  const deliveryInfo = { mode: d.mode, date: d.date, slotId: d.slotId, slotLabel: d.slotLabel, start: d.start, end: d.end }
-  const shippingInfo = { method: 'internal', note: `${z.zone.name} (${z.distanceKm} km), ${d.date} ${d.slotLabel}` }
 
   const loggedIn = await getCurrentCustomer().catch(() => null)
 
@@ -119,8 +142,9 @@ export async function POST(request) {
     if (voucherCode) await releaseVoucher(voucherCode).catch(() => {})
   }
 
-  let slotRes
-  try {
+  // Kurir instan Biteship tidak memakai kapasitas slot kurir toko.
+  let slotRes = null
+  if (!viaBiteship) try {
     const r = await reserveSlot({ date: d.date, slotId: d.slotId, kg: ctx.weightKg, capacityKg: ctx.capacityKg })
     if (!r.ok) {
       await undo(null, null)

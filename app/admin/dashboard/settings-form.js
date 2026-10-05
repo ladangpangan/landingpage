@@ -41,6 +41,7 @@ import DeliveryPanel from './delivery-panel'
 import TodayPanel from './today-panel'
 import OrdersPanel from './orders-panel'
 import KirimPanel from './kirim-panel'
+import BiteshipPanel from './biteship-panel'
 import ImportPanel from './import-panel'
 import { wibNow } from '@/lib/shipping'
 
@@ -73,6 +74,7 @@ const NAV_ITEMS = [
   { id: 'products', label: 'Produk & Promo', icon: Package, group: 'Produk & Paket' },
   { id: 'bundles', label: 'Paket Hemat & Masak', icon: Boxes },
   { id: 'delivery', label: 'Ongkir & Voucher', icon: Truck, ownerOnly: true, group: 'Pengaturan' },
+  { id: 'biteship', label: 'Kurir Instan (Biteship)', icon: Truck, ownerOnly: true, noSave: true },
   { id: 'contact', label: 'Pengaturan Toko', icon: Phone },
   { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
   { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
@@ -1153,6 +1155,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           )}
 
           {tab === 'delivery' && isOwner && <DeliveryPanel />}
+
+          {tab === 'biteship' && isOwner && <BiteshipPanel />}
 
           {tab === 'bundles' && <BundlesPanel ImageField={ImageField} availableImages={availableImages} />}
 
