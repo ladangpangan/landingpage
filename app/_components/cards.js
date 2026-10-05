@@ -73,7 +73,7 @@ export function AddControl({ item, kind, soldOut, stockLeft, label = 'Tambah' })
   return <QtyStepper className="mt-3" value={qty} max={max} onChange={(n) => setQty(item.id, n, kind)} />
 }
 
-function ImageBox({ src, alt, soldOut, children, href }) {
+function ImageBox({ src, alt, soldOut, children, href, eager = false }) {
   const img = (
     <div className="relative aspect-square overflow-hidden bg-lpi-light">
       <SafeImage
@@ -81,6 +81,7 @@ function ImageBox({ src, alt, soldOut, children, href }) {
         alt={alt}
         fill
         sizes="(max-width: 640px) 50vw, 240px"
+        loading={eager ? 'eager' : undefined}
         className={`object-cover ${soldOut ? 'opacity-50 grayscale' : ''}`}
       />
       <div className="absolute left-2 top-2 flex flex-col items-start gap-1">{children}</div>
@@ -89,10 +90,10 @@ function ImageBox({ src, alt, soldOut, children, href }) {
   return href ? <Link href={href}>{img}</Link> : img
 }
 
-export function ProductCard({ product }) {
+export function ProductCard({ product, eager = false }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-lpi-line bg-white shadow-sm">
-      <ImageBox src={product.image} alt={product.name} soldOut={product.soldOut} href={`/produk/${product.id}`}>
+      <ImageBox src={product.image} alt={product.name} soldOut={product.soldOut} href={`/produk/${product.id}`} eager={eager}>
         <StockBadge soldOut={product.soldOut} stockLeft={product.stockLeft} />
         {product.isPromo && !product.soldOut && (
           <span className="rounded-full bg-lpi px-2.5 py-1 text-xs font-bold text-white">Promo</span>

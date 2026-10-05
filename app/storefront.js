@@ -97,8 +97,8 @@ export default function Storefront({ settings, bundles, initialQuery = '' }) {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {foundProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} />
+                {foundProducts.map((p, i) => (
+                  <ProductCard key={p.id} product={p} eager={i < 8} />
                 ))}
               </div>
             </>
@@ -149,8 +149,8 @@ export default function Storefront({ settings, bundles, initialQuery = '' }) {
           {promo.length > 0 && (
             <Section id="promo" title="Promo">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {promo.map((p) => (
-                  <ProductCard key={p.id} product={p} />
+                {promo.map((p, i) => (
+                  <ProductCard key={p.id} product={p} eager={i < 4} />
                 ))}
               </div>
             </Section>
@@ -172,8 +172,8 @@ export default function Storefront({ settings, bundles, initialQuery = '' }) {
               ))}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {gridProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
+              {gridProducts.map((p, i) => (
+                <ProductCard key={p.id} product={p} eager={i < 8} />
               ))}
             </div>
             <p className="mt-8 text-center text-sm text-lpi-muted">
