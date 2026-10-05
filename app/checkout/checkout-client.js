@@ -76,7 +76,7 @@ export default function CheckoutClient({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map((it) => ({ productId: it.productId, qty: it.qty })),
+          items: items.map((it) => ({ kind: it.kind || 'produk', productId: it.productId, qty: it.qty })),
           customer: { name, phone, address },
           shipping: {
             method: shippingMethod,
@@ -150,7 +150,7 @@ export default function CheckoutClient({
           <h2 className="text-sm font-medium uppercase tracking-wide text-[#7E9488]">Ringkasan Pesanan</h2>
           <div className="mt-3 space-y-3">
             {items.map((it) => (
-              <div key={it.productId} className="flex items-center gap-3">
+              <div key={`${it.kind || 'produk'}:${it.productId}`} className="flex items-center gap-3">
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#EEF8F1]">
                   <Image src={it.image} alt={it.name} fill sizes="56px" className="object-cover" />
                 </div>

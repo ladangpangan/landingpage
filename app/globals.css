@@ -4,4 +4,8 @@
 
 body {
   margin: 0;
+  background: #f5f7f6;
+  color: #16281e;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }

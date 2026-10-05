@@ -210,6 +210,18 @@ login lagi dengan `ADMIN_OWNER_EMAIL`/`ADMIN_PASSWORD`.
   Pembayaran yang masuk untuk pesanan yang sudah batal/kedaluwarsa tidak
   mengubah status; pesanan ditandai `needsReview` agar dicek pemilik.
 
+## Stok & paket (sejak Tahap 2)
+
+- Stok per produk diatur di admin (Produk & Promo > Stok). Kosong = tidak
+  dihitung (selalu tersedia), 0 = habis.
+- Saat checkout, stok ditahan di server sebelum pesanan disimpan. Pesanan yang
+  tidak dibayar kedaluwarsa dalam 60 menit (pengaturan `expiry` Midtrans) dan
+  stoknya dikembalikan lewat notifikasi Midtrans `expire`. Pastikan URL
+  notifikasi Midtrans terdaftar, kalau tidak stok yang ditahan tidak kembali
+  otomatis.
+- Pertama kali jalan, aplikasi mengisi 3 paket contoh (Paket Hemat x2, Paket
+  Masak x1) satu kali. Menghapusnya tidak membuatnya muncul lagi.
+
 ## ERP integration
 
 Every successful checkout calls `syncOrderToErp()` (`lib/erp-sync.js`),
@@ -228,7 +240,8 @@ x-api-key: <ERP_INTEGRATION_KEY>
 {
   "orderId": "LPI-...",
   "customer": { "name": "...", "phone": "...", "address": "..." },
-  "items": [{ "id": "...", "name": "...", "price": 32000, "qty": 2, "erpCode": "..." }],
+  "items": [{ "id": "...", "name": "...", "price": 32000, "qty": 2, "erpCode": "...",
+             "components": [{ "id": "...", "name": "...", "qty": 1, "erpCode": "..." }] }],
   "grossAmount": 64000
 }
 ```

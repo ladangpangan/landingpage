@@ -67,3 +67,6 @@ Tugas pertama:
    * Data dari Google hanya email, nama, foto profil. Tidak menambah teknologi baru (dibuat langsung di aplikasi yang ada).
    * Dikerjakan di **Tahap 4**, bersama halaman lacak pesanan.
    * Perlu dari pemilik: kunci masuk Google (Google Cloud Console, gratis) dan halaman Kebijakan Privasi; status aplikasi Google diubah ke "production" di Tahap 5.
+
+* **Admin (disetujui 2026-10-05): pilihan C, tata ulang menu admin.** Halaman pertama "Hari ini" (pesanan baru, sudah dibayar belum dikemas, stok menipis/habis, pesanan perlu dicek). Menu dikelompokkan: Hari ini, Pesanan, Daftar Kirim Kurir, Produk & Paket, Pengaturan. Dikerjakan di **Tahap 4**. Di Tahap 2 admin hanya ditambah kolom Stok.
+* **Tahap 2 (disetujui):** 3 paket contoh dan resep contoh dulu (bertanda "contoh"); paket dan resep asli diisi pemilik di Tahap 4.
