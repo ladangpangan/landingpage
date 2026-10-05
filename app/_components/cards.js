@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from './safe-image'
 import { Minus, Plus } from 'lucide-react'
 import { useCart } from '@/lib/cart-context'
 import { formatIDR } from '@/lib/format'
@@ -76,7 +76,7 @@ export function AddControl({ item, kind, soldOut, stockLeft, label = 'Tambah' })
 function ImageBox({ src, alt, soldOut, children, href }) {
   const img = (
     <div className="relative aspect-square overflow-hidden bg-lpi-light">
-      <Image
+      <SafeImage
         src={src}
         alt={alt}
         fill

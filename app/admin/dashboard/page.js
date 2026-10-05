@@ -19,22 +19,10 @@ function listUploadedImages() {
   }
 }
 
-function listBundledImages() {
-  try {
-    const dir = path.join(process.cwd(), 'public', 'landing')
-    return fs
-      .readdirSync(dir)
-      .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
-      .map((f) => `/landing/${f}`)
-      .sort()
-  } catch {
-    return []
-  }
-}
-
+// Hanya foto yang diunggah sendiri (terbaru dulu). Foto bawaan template tidak
+// ditawarkan lagi di pemilih gambar maupun galeri.
 function listLandingImages() {
-  // Newest uploads first, then the bundled starter photos.
-  return [...listUploadedImages(), ...listBundledImages()]
+  return listUploadedImages()
 }
 
 export default async function AdminDashboardPage() {
@@ -43,14 +31,12 @@ export default async function AdminDashboardPage() {
 
   const settings = await getAdminLandingSettings({ role: admin.role })
   const images = listLandingImages()
-  const bundledImages = listBundledImages()
   const hasMongo = !!process.env.MONGO_URL
 
   return (
     <SettingsForm
       initialSettings={settings}
       availableImages={images}
-      bundledImages={bundledImages}
       hasMongo={hasMongo}
       admin={admin}
     />

@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import SafeImage from '../../_components/safe-image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
@@ -60,7 +60,7 @@ export default async function ProductPage({ params }) {
 
         <div className="mt-2 grid gap-6 sm:grid-cols-2">
           <div className="relative aspect-square overflow-hidden rounded-3xl bg-lpi-light">
-            <Image
+            <SafeImage
               src={product.image}
               alt={product.name}
               fill

@@ -16,7 +16,7 @@ export const viewport = {
 
 export async function generateMetadata() {
   const settings = await getPublicLandingSettings()
-  const ogImage = settings.logoUrl || '/landing/produk-1.jpeg'
+  const ogImage = settings.logoUrl || '/logo.png'
 
   return {
     metadataBase: new URL(SITE_URL),
