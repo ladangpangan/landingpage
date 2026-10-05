@@ -61,3 +61,10 @@ test('keranjang: input tidak sah ditolak', () => {
   assert.equal(resolveCartLines([{ kind: 'paket', id: 'rusak', qty: 1 }], products, bundles).ok, false)
   assert.equal(resolveCartLines([{ kind: 'paket', id: 'nope', qty: 1 }], products, bundles).ok, false)
 })
+
+import { orderWeightKg } from '../lib/cart-math.js'
+test('berat pesanan dari berat satuan; kosong dianggap 1 kg', () => {
+  const m = new Map([['a', { weightKg: 0.9 }], ['b', { weightKg: 2.5 }], ['c', {}]])
+  assert.equal(orderWeightKg([{ variantId: 'a', qty: 2 }, { variantId: 'b', qty: 1 }], m), 4.3)
+  assert.equal(orderWeightKg([{ variantId: 'c', qty: 3 }, { variantId: 'x', qty: 1 }], m), 4)
+})

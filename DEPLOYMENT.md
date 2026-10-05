@@ -284,6 +284,27 @@ login lagi dengan `ADMIN_OWNER_EMAIL`/`ADMIN_PASSWORD`.
 - Pertama kali jalan, aplikasi mengisi 3 paket contoh (Paket Hemat x2, Paket
   Masak x1) satu kali. Menghapusnya tidak membuatnya muncul lagi.
 
+## Ongkir, jadwal kirim, dan voucher (sejak Tahap 3)
+
+- **Titik gudang wajib diisi** (admin > Ongkir & Voucher > Gudang & kurir) sebelum
+  checkout bisa menghitung ongkir. Cara mudah: berdiri di gudang lalu tekan
+  "Pakai lokasi saya sekarang", atau salin lintang/bujur dari Google Maps (tekan
+  lama pada titik gudang). Tanpa titik gudang, pembeli melihat pesan "Lokasi gudang
+  belum diatur" dan diarahkan ke WhatsApp.
+- Zona ditentukan dari lokasi yang dibagikan HP pembeli (butuh HTTPS, sudah ada) dan
+  **perkiraan jarak jalan = jarak garis lurus x faktor jalan** (awal 1,3, bisa diubah).
+  Lokasi berasal dari HP pembeli, jadi periksa alamat tertulis dan tautan "Lihat di
+  peta" di tab Pesanan sebelum mengantar.
+- Kapasitas tiap slot (Pagi/Siang/Sore) = jumlah kurir x trip per slot x muatan per trip
+  (awal 1 x 1 x 40 kg). Berat tiap produk diisi di form produk ("Berat per satuan").
+  Produk yang beratnya belum diisi dihitung 1 kg.
+- Kapasitas slot (koleksi `delivery_usage`), stok, dan kuota voucher ditahan saat pesanan
+  dibuat dan dikembalikan bila pesanan batal/gagal/kedaluwarsa (sekali saja).
+- Total ke Midtrans = belanja + ongkir - diskon. Ongkir dikirim sebagai item "Ongkos
+  kirim" dan diskon sebagai item bernilai NEGATIF. Alur ini belum pernah diuji dengan
+  Midtrans sungguhan; bila Midtrans menolak item negatif, lihat log `[checkout]`.
+- Payload ERP bertambah (tidak mengubah isi lama): `delivery`, `location`, `pricing`, `weightKg`.
+
 ## ERP integration
 
 Every successful checkout calls `syncOrderToErp()` (`lib/erp-sync.js`),

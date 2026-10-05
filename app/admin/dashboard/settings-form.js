@@ -20,6 +20,7 @@ import {
   MessageCircle,
   Package,
   Boxes,
+  Truck,
   Pencil,
   Phone,
   Plus,
@@ -36,6 +37,7 @@ import { toast } from 'sonner'
 import { formatIDR } from '@/lib/format'
 import AccountsPanel from './accounts-panel'
 import BundlesPanel from './bundles-panel'
+import DeliveryPanel from './delivery-panel'
 
 let uid = 0
 const newProduct = () => ({
@@ -49,6 +51,7 @@ const newProduct = () => ({
   isPromo: false,
   erpCode: '',
   stock: null,
+  weightKg: 1,
 })
 const newSlide = () => ({
   id: `slide-${Date.now()}-${uid++}`,
@@ -64,6 +67,7 @@ const NAV_ITEMS = [
   { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
   { id: 'products', label: 'Produk & Promo', icon: Package },
   { id: 'bundles', label: 'Paket Hemat & Masak', icon: Boxes },
+  { id: 'delivery', label: 'Ongkir & Voucher', icon: Truck, ownerOnly: true },
   { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
   { id: 'contact', label: 'Pengaturan Toko', icon: Phone },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard, ownerOnly: true },
@@ -327,6 +331,17 @@ function ProductEditModal({ product, isNew, onChange, onSave, onClose, available
               value={product.stock ?? ''}
               onChange={(e) => onChange({ stock: e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
               placeholder="Tidak dihitung"
+            />
+          </Field>
+          <Field label="Berat per satuan (kg)" hint="Dipakai menghitung muatan kurir (maks 40 kg per trip). Contoh: 1 ekor karkas 0,9; ceker per kg 1.">
+            <input
+              type="number"
+              min="0.01"
+              step="0.05"
+              inputMode="decimal"
+              className={inputClass}
+              value={product.weightKg ?? ''}
+              onChange={(e) => onChange({ weightKg: e.target.value === '' ? '' : Number(e.target.value) })}
             />
           </Field>
           <Field label="Kode ERP" hint="Dipakai untuk menyambungkan ke ERP nanti. Boleh dikosongkan.">
@@ -866,10 +881,33 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                             <p className="mt-1 flex items-start gap-1.5 text-sm text-[#4C6356]">
                               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {o.customer?.address}
                             </p>
-                            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#D6EBDC] bg-[#F7FBF8] px-2.5 py-1 text-xs font-medium text-[#1F3A28]">
-                              {SHIPPING_LABEL[o.shipping?.method] || 'Kurir Internal'}
-                              {o.shipping?.method === 'lainnya' && o.shipping?.note ? ` — ${o.shipping.note}` : ''}
-                            </p>
+                            {o.delivery ? (
+                              <div className="mt-1.5 space-y-0.5 rounded-xl border border-[#D6EBDC] bg-[#F7FBF8] px-3 py-2 text-xs text-[#1F3A28]">
+                                <p className="font-semibold">
+                                  Kirim {o.delivery.mode === 'sekarang' ? 'hari ini' : 'terjadwal'}: {o.delivery.date} · {o.delivery.slotLabel} ({o.delivery.start}–{o.delivery.end})
+                                </p>
+                                {o.location && (
+                                  <p>
+                                    {o.location.zoneName} · ±{o.location.distanceKm} km ·{' '}
+                                    <a
+                                      href={`https://www.google.com/maps?q=${o.location.lat},${o.location.lng}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-medium text-[#22824E] underline"
+                                    >
+                                      Lihat di peta
+                                    </a>
+                                  </p>
+                                )}
+                                {o.weightKg != null && <p>Berat ±{o.weightKg} kg</p>}
+                                {o.customer?.note && <p>Catatan: {o.customer.note}</p>}
+                              </div>
+                            ) : (
+                              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#D6EBDC] bg-[#F7FBF8] px-2.5 py-1 text-xs font-medium text-[#1F3A28]">
+                                {SHIPPING_LABEL[o.shipping?.method] || 'Kurir Internal'}
+                                {o.shipping?.method === 'lainnya' && o.shipping?.note ? ` — ${o.shipping.note}` : ''}
+                              </p>
+                            )}
                             {waDigits && (
                               <a
                                 href={`https://wa.me/${waDigits}`}
@@ -894,6 +932,26 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                                 </li>
                               ))}
                             </ul>
+                            {o.pricing && (
+                              <div className="mt-2 space-y-0.5 border-t border-dashed border-[#D6EBDC] pt-2 text-xs text-[#4C6356]">
+                                {o.pricing.discountShop > 0 && (
+                                  <p className="flex justify-between">
+                                    <span>Diskon {o.pricing.voucherCode}</span>
+                                    <span>− {formatIDR(o.pricing.discountShop)}</span>
+                                  </p>
+                                )}
+                                <p className="flex justify-between">
+                                  <span>Ongkir</span>
+                                  <span>{o.pricing.shippingFee === 0 ? 'Gratis' : formatIDR(o.pricing.shippingFee)}</span>
+                                </p>
+                                {o.pricing.shippingDiscount > 0 && (
+                                  <p className="flex justify-between">
+                                    <span>Diskon ongkir {o.pricing.voucherCode}</span>
+                                    <span>− {formatIDR(o.pricing.shippingDiscount)}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
                             <div className="mt-2 flex justify-between border-t border-dashed border-[#D6EBDC] pt-2 text-sm font-medium text-[#142A1C]">
                               <span>Total</span>
                               <span className="text-[#2FA966]">{formatIDR(o.grossAmount)}</span>
@@ -1226,6 +1284,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
               </div>
             </div>
           )}
+
+          {tab === 'delivery' && isOwner && <DeliveryPanel />}
 
           {tab === 'bundles' && <BundlesPanel ImageField={ImageField} availableImages={availableImages} />}
 

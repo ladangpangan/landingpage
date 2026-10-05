@@ -1,40 +1,66 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import SafeImage from '../_components/safe-image'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Bike, Loader2, MoreHorizontal, ShieldCheck, ShoppingBag, Truck } from 'lucide-react'
+import { ArrowLeft, CalendarDays, CheckCircle2, Loader2, MapPin, MessageCircle, ShieldCheck, ShoppingBag, Tag, Zap } from 'lucide-react'
 import { toast } from 'sonner'
+import SafeImage from '../_components/safe-image'
 import { useCart } from '@/lib/cart-context'
 import { formatIDR } from '@/lib/format'
 
-const SHIPPING_METHODS = [
-  { value: 'internal', label: 'Kurir Internal', desc: 'Diantar oleh tim kami', icon: Truck },
-  { value: 'gosend', label: 'GoSend', desc: 'Anda pesan sendiri saat barang siap', icon: Bike },
-  { value: 'grabexpress', label: 'GrabExpress', desc: 'Anda pesan sendiri saat barang siap', icon: Bike },
-  { value: 'lainnya', label: 'Lainnya', desc: 'Tulis catatan pengiriman', icon: MoreHorizontal },
-]
+const inputClass =
+  'w-full rounded-xl border border-lpi-line bg-white px-4 py-3 text-base text-lpi-ink outline-none placeholder:text-lpi-muted focus:border-lpi focus:ring-2 focus:ring-lpi/15'
+const cardClass = 'rounded-2xl border border-lpi-line bg-white p-4 sm:p-5'
 
-export default function CheckoutClient({
-  whatsappNumber,
-  waMessage,
-  midtransClientKey,
-  midtransIsProduction,
-}) {
+const jam = (hhmm) => String(hhmm || '').replace(':', '.')
+
+function formatDay(date) {
+  const d = new Date(`${date}T00:00:00+07:00`)
+  return {
+    hari: d.toLocaleDateString('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }),
+    tanggal: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }),
+  }
+}
+
+function Section({ icon: Icon, title, hint, children }) {
+  return (
+    <section className={cardClass}>
+      <h2 className="flex items-center gap-2 text-base font-extrabold text-lpi-ink">
+        {Icon && <Icon className="h-5 w-5 text-lpi" />}
+        {title}
+      </h2>
+      {hint && <p className="mt-1 text-sm text-lpi-muted">{hint}</p>}
+      <div className="mt-3">{children}</div>
+    </section>
+  )
+}
+
+export default function CheckoutClient({ whatsappNumber, waMessage, midtransClientKey, midtransIsProduction }) {
   const router = useRouter()
-  const { items, total, hydrated, clearCart } = useCart()
+  const { items, total: cartTotal, hydrated, clearCart } = useCart()
+
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
-  const [shippingMethod, setShippingMethod] = useState('internal')
-  const [shippingNote, setShippingNote] = useState('')
+  const [note, setNote] = useState('')
+
+  const [location, setLocation] = useState(null) // { lat, lng }
+  const [locState, setLocState] = useState('idle') // idle | loading | ok | denied | error
+  const [voucherInput, setVoucherInput] = useState('')
+  const [voucherCode, setVoucherCode] = useState('')
+  const [mode, setMode] = useState('') // 'sekarang' | 'terjadwal'
+  const [date, setDate] = useState('')
+  const [slotId, setSlotId] = useState('')
+
+  const [quote, setQuote] = useState(null)
+  const [reload, setReload] = useState(0)
+  const [quoting, setQuoting] = useState(false)
   const [loading, setLoading] = useState(false)
   const [snapReady, setSnapReady] = useState(false)
+  const reqId = useRef(0)
 
-  const snapSrc = midtransIsProduction
-    ? 'https://app.midtrans.com/snap/snap.js'
-    : 'https://app.sandbox.midtrans.com/snap/snap.js'
+  const snapSrc = midtransIsProduction ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js'
 
   useEffect(() => {
     if (!midtransClientKey || typeof window === 'undefined') return
@@ -51,24 +77,77 @@ export default function CheckoutClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [midtransClientKey])
 
-  async function handlePay(e) {
-    e.preventDefault()
-    if (!name.trim() || !phone.trim() || !address.trim()) {
-      toast.error('Nama Lengkap, Nomor WhatsApp, dan Lokasi Pengiriman wajib diisi.')
+  const cartLines = items.map((it) => ({ kind: it.kind || 'produk', productId: it.productId, qty: it.qty }))
+  const cartKey = JSON.stringify(cartLines)
+
+  // Perkiraan biaya dari server (zona, ongkir, voucher, slot). Semua angka dihitung server.
+  useEffect(() => {
+    if (!hydrated || items.length === 0) return
+    const id = ++reqId.current
+    setQuoting(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/checkout/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cartLines,
+            location,
+            voucherCode,
+            delivery: mode ? { mode, date: mode === 'terjadwal' ? date : undefined, slotId: mode === 'terjadwal' ? slotId : undefined } : null,
+          }),
+        })
+        const data = await res.json()
+        if (id !== reqId.current) return
+        if (!res.ok) throw new Error(data.error || 'Gagal menghitung biaya.')
+        setQuote(data)
+      } catch (e) {
+        if (id === reqId.current) toast.error(e.message || 'Gagal menghitung biaya.')
+      } finally {
+        if (id === reqId.current) setQuoting(false)
+      }
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, cartKey, location, voucherCode, mode, date, slotId, reload])
+
+  function askLocation() {
+    if (!navigator.geolocation) {
+      setLocState('error')
       return
     }
-    if (shippingMethod === 'lainnya' && !shippingNote.trim()) {
-      toast.error('Tulis catatan pengiriman untuk metode "Lainnya".')
-      return
-    }
-    if (!midtransClientKey) {
-      toast.error('Payment gateway belum dikonfigurasi oleh admin. Silakan pesan via WhatsApp.')
-      return
-    }
-    if (!snapReady || !window.snap) {
-      toast.error('Payment gateway masih dimuat, coba lagi sebentar lagi.')
-      return
-    }
+    setLocState('loading')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocState('ok')
+      },
+      (err) => setLocState(err.code === 1 ? 'denied' : 'error'),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+    )
+  }
+
+  function applyVoucher() {
+    const code = voucherInput.trim()
+    if (!code) return
+    setVoucherCode(code)
+  }
+
+  const waLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(waMessage)}`
+  const pricing = quote?.pricing
+  const zoneOk = !!quote?.zone
+  const zoneErr = quote?.zoneError && quote.zoneError.code !== 'lokasi' ? quote.zoneError : null
+  const deliveryOk = !!quote?.delivery?.ok
+  const deliveryErr = mode && quote?.delivery && !quote.delivery.ok ? quote.delivery.error : null
+  const ready =
+    !!name.trim() && !!phone.trim() && !!address.trim() && zoneOk && deliveryOk && !quote?.voucherError && !quoting && pricing?.total > 0
+
+  async function handlePay() {
+    if (!name.trim() || !phone.trim() || !address.trim()) return toast.error('Nama, nomor WhatsApp, dan alamat lengkap wajib diisi.')
+    if (!zoneOk) return toast.error('Bagikan lokasi Anda dulu supaya ongkir bisa dihitung.')
+    if (!deliveryOk) return toast.error('Pilih cara dan jam pengiriman.')
+    if (!midtransClientKey) return toast.error('Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.')
+    if (!snapReady || !window.snap) return toast.error('Pembayaran masih dimuat, coba lagi sebentar lagi.')
 
     setLoading(true)
     try {
@@ -76,16 +155,18 @@ export default function CheckoutClient({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map((it) => ({ kind: it.kind || 'produk', productId: it.productId, qty: it.qty })),
-          customer: { name, phone, address },
-          shipping: {
-            method: shippingMethod,
-            note: shippingMethod === 'lainnya' ? shippingNote.trim() : '',
-          },
+          items: cartLines,
+          customer: { name, phone, address, note },
+          location,
+          voucherCode,
+          delivery: { mode, date: mode === 'terjadwal' ? date : undefined, slotId: mode === 'terjadwal' ? slotId : undefined },
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Gagal membuat transaksi.')
+      if (!res.ok) {
+        if (res.status === 409) setQuote(null) // jadwal/stok berubah: hitung ulang
+        throw new Error(data.error || 'Gagal membuat transaksi.')
+      }
 
       window.snap.pay(data.token, {
         onSuccess: () => {
@@ -95,32 +176,22 @@ export default function CheckoutClient({
         },
         onPending: () => toast.info('Pembayaran tertunda. Selesaikan pembayaran Anda.'),
         onError: () => toast.error('Pembayaran gagal. Silakan coba lagi.'),
-        onClose: () => toast.message('Kamu menutup jendela pembayaran sebelum selesai.'),
+        onClose: () => toast.message('Anda menutup jendela pembayaran sebelum selesai.'),
       })
     } catch (error) {
       toast.error(error.message || 'Terjadi kesalahan, silakan coba lagi.')
+      setReload((n) => n + 1)
     } finally {
       setLoading(false)
     }
   }
-
-  const waLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(waMessage)}`
-
   if (hydrated && items.length === 0) {
     return (
-      <div className="lpi-landing flex min-h-screen flex-col items-center justify-center bg-[#FFFFFF] px-6 text-center">
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@300;400;500;600&display=swap');
-          .lpi-landing { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
-          .lpi-landing .font-serif { font-family: 'Playfair Display', ui-serif, Georgia, serif; }
-        `}</style>
-        <ShoppingBag className="h-12 w-12 text-[#7E9488]" />
-        <h1 className="mt-4 font-serif text-2xl font-medium text-[#142A1C]">Keranjang Anda kosong</h1>
-        <p className="mt-2 text-sm text-[#4C6356]">Pilih produk dulu sebelum checkout.</p>
-        <Link
-          href="/"
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#2FA966] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#22824E]"
-        >
+      <div className="flex min-h-screen flex-col items-center justify-center bg-lpi-bg px-6 text-center">
+        <ShoppingBag className="h-12 w-12 text-lpi-muted" />
+        <h1 className="mt-4 text-2xl font-extrabold text-lpi-ink">Keranjang Anda kosong</h1>
+        <p className="mt-2 text-sm text-lpi-muted">Pilih produk dulu sebelum checkout.</p>
+        <Link href="/" className="mt-6 inline-flex h-12 items-center gap-2 rounded-xl bg-lpi px-6 text-sm font-bold text-white hover:bg-lpi-dark">
           <ArrowLeft className="h-4 w-4" />
           Kembali Belanja
         </Link>
@@ -129,142 +200,257 @@ export default function CheckoutClient({
   }
 
   return (
-    <div className="lpi-landing min-h-screen bg-[#FFFFFF] text-[#142A1C]">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@300;400;500;600&display=swap');
-        .lpi-landing { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
-        .lpi-landing .font-serif { font-family: 'Playfair Display', ui-serif, Georgia, serif; }
-      `}</style>
-
-      <header className="sticky top-0 z-10 border-b border-[#D6EBDC]/70 bg-[#FFFFFF]/95 px-4 py-3 backdrop-blur sm:px-8">
-        <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Link href="/" className="rounded-full p-1.5 hover:bg-[#E1F4E7]" aria-label="Kembali">
-            <ArrowLeft className="h-5 w-5 text-[#1F3A28]" />
+    <div className="min-h-screen bg-lpi-bg pb-32 text-lpi-ink">
+      <header className="sticky top-0 z-30 border-b border-lpi-line bg-white">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+          <Link href="/" className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-lpi-light" aria-label="Kembali">
+            <ArrowLeft className="h-5 w-5 text-lpi" />
           </Link>
-          <h1 className="font-serif text-lg font-medium text-[#142A1C]">Checkout</h1>
+          <h1 className="text-lg font-extrabold">Checkout</h1>
         </div>
       </header>
 
-      <form onSubmit={handlePay} className="mx-auto max-w-2xl px-4 py-6 sm:px-8">
-        <section className="rounded-2xl border border-[#D6EBDC] bg-white p-4 sm:p-5">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-[#7E9488]">Ringkasan Pesanan</h2>
-          <div className="mt-3 space-y-3">
+      <main className="mx-auto max-w-2xl space-y-3 px-4 pt-4">
+        <Section title="Pesanan Anda">
+          <div className="space-y-3">
             {items.map((it) => (
               <div key={`${it.kind || 'produk'}:${it.productId}`} className="flex items-center gap-3">
-                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#EEF8F1]">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-lpi-light">
                   <SafeImage src={it.image} alt={it.name} fill sizes="56px" className="object-cover" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[#142A1C]">{it.name}</p>
-                  <p className="text-xs text-[#7E9488]">
-                    {it.qty} x {formatIDR(it.price)}
+                  <p className="line-clamp-2 text-sm font-semibold">{it.name}</p>
+                  <p className="text-xs text-lpi-muted">
+                    {it.qty} × {formatIDR(it.price)}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm font-medium text-[#142A1C]">{formatIDR(it.qty * it.price)}</p>
+                <p className="shrink-0 text-sm font-bold">{formatIDR(it.qty * it.price)}</p>
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-dashed border-[#D6EBDC] pt-3">
-            <span className="text-sm font-medium text-[#1F3A28]">Total Pembayaran</span>
-            <span className="font-serif text-2xl text-[#2FA966]">{formatIDR(total)}</span>
-          </div>
-        </section>
+        </Section>
 
-        <section className="mt-5 space-y-4 rounded-2xl border border-[#D6EBDC] bg-white p-4 sm:p-5">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-[#7E9488]">Data Pengiriman</h2>
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-[#1F3A28]">Nama Lengkap</span>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nama Anda"
-              className="w-full rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none placeholder:text-[#7E9488] focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-[#1F3A28]">Nomor WhatsApp</span>
-            <input
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="08xxxxxxxxxx"
-              className="w-full rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none placeholder:text-[#7E9488] focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-[#1F3A28]">Lokasi Pengiriman</span>
-            <textarea
-              required
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              rows={3}
-              placeholder="Alamat lengkap untuk pengiriman"
-              className="w-full resize-none rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none placeholder:text-[#7E9488] focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"
-            />
-          </label>
-        </section>
-
-        <section className="mt-5 space-y-3 rounded-2xl border border-[#D6EBDC] bg-white p-4 sm:p-5">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-[#7E9488]">Metode Pengiriman</h2>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {SHIPPING_METHODS.map((m) => {
-              const Icon = m.icon
-              const active = shippingMethod === m.value
-              return (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setShippingMethod(m.value)}
-                  className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition ${
-                    active
-                      ? 'border-[#2FA966] bg-[#E1F4E7] ring-1 ring-[#2FA966]'
-                      : 'border-[#D6EBDC] bg-white hover:border-[#2FA966]/50'
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 ${active ? 'text-[#22824E]' : 'text-[#7E9488]'}`} />
-                  <span className="text-sm font-medium text-[#142A1C]">{m.label}</span>
-                </button>
-              )
-            })}
+        <Section title="Data penerima">
+          <div className="space-y-3">
+            <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama lengkap" autoComplete="name" maxLength={50} />
+            <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Nomor WhatsApp, mis. 0812xxxxxxx" inputMode="tel" autoComplete="tel" maxLength={30} />
+            <textarea className={inputClass} rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Alamat lengkap (jalan, nomor, RT/RW, patokan)" maxLength={200} />
+            <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan untuk kurir (boleh kosong)" maxLength={200} />
           </div>
-          <p className="text-xs text-[#7E9488]">
-            {SHIPPING_METHODS.find((m) => m.value === shippingMethod)?.desc}
-            {shippingMethod !== 'internal' && (
-              <> — kami akan pesankan/konfirmasi kurirnya melalui WhatsApp setelah pesanan dikonfirmasi.</>
-            )}
-          </p>
-          {shippingMethod === 'lainnya' && (
-            <input
-              type="text"
-              required
-              value={shippingNote}
-              onChange={(e) => setShippingNote(e.target.value)}
-              placeholder="Contoh: JNE, Anteraja, ambil sendiri, dll."
-              className="w-full rounded-xl border border-[#D6EBDC] bg-[#FFFFFF] px-4 py-3 text-[#1F3A28] outline-none placeholder:text-[#7E9488] focus:border-[#2FA966] focus:ring-2 focus:ring-[#2FA966]/20"
-            />
+        </Section>
+
+        <Section icon={MapPin} title="Lokasi pengantaran" hint="Ongkir dihitung dari lokasi Anda. Tekan tombol ini saat Anda berada di alamat pengantaran.">
+          <button
+            type="button"
+            onClick={askLocation}
+            disabled={locState === 'loading'}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-lpi bg-white text-base font-bold text-lpi hover:bg-lpi-light disabled:opacity-60"
+          >
+            {locState === 'loading' ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
+            {location ? 'Ulangi ambil lokasi' : 'Pakai lokasi saya'}
+          </button>
+          {locState === 'denied' && (
+            <p className="mt-3 rounded-xl bg-[#FDECEC] px-4 py-3 text-sm text-[#9B2C2C]">
+              Akses lokasi ditolak. Aktifkan izin lokasi untuk situs ini di pengaturan browser HP Anda, lalu tekan tombol lagi. Atau pesan lewat WhatsApp.
+            </p>
           )}
-        </section>
+          {locState === 'error' && (
+            <p className="mt-3 rounded-xl bg-[#FDECEC] px-4 py-3 text-sm text-[#9B2C2C]">Lokasi belum bisa diambil. Coba lagi di tempat terbuka, atau pesan lewat WhatsApp.</p>
+          )}
+          {zoneOk && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-lpi-light px-4 py-3 text-sm text-lpi">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-bold">{quote.zone.name}</p>
+                <p>
+                  Sekitar {quote.zone.distanceKm} km dari gudang · ongkir {formatIDR(quote.zone.fee)}, gratis bila belanja ≥ {formatIDR(quote.zone.freeShippingMin)}
+                </p>
+                {location && (
+                  <a href={`https://www.google.com/maps?q=${location.lat},${location.lng}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                    Lihat lokasi di peta
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+          {zoneErr && (
+            <div className="mt-3 rounded-xl bg-[#FDECEC] px-4 py-3 text-sm text-[#9B2C2C]">
+              <p>{zoneErr.message}</p>
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex h-11 items-center gap-2 rounded-xl bg-lpi px-4 font-bold text-white">
+                <MessageCircle className="h-4 w-4" />
+                Tanya via WhatsApp
+              </a>
+            </div>
+          )}
+        </Section>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#2FA966] px-8 py-4 text-base font-medium text-white shadow-lg shadow-[#2FA966]/25 transition hover:bg-[#22824E] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
-          Bayar Sekarang
-        </button>
-        <p className="mt-3 text-center text-xs text-[#7E9488]">
-          Pembayaran diproses aman melalui Midtrans — mendukung QRIS, transfer bank, dan e-wallet. Ada
-          pertanyaan?{' '}
-          <a href={waLink} target="_blank" rel="noopener noreferrer" className="font-medium text-[#2FA966] underline">
-            Chat WhatsApp
-          </a>
-          .
-        </p>
-      </form>
+        <Section icon={CalendarDays} title="Pengiriman">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={!quote || !quote.immediate?.available}
+              onClick={() => setMode('sekarang')}
+              className={`rounded-xl border-2 p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'sekarang' ? 'border-lpi bg-lpi-light' : 'border-lpi-line bg-white'}`}
+            >
+              <span className="flex items-center gap-2 text-sm font-extrabold">
+                <Zap className="h-4 w-4 text-lpi" /> Kirim Sekarang
+              </span>
+              <span className="mt-1 block text-xs text-lpi-muted">
+                {quote?.immediate?.available
+                  ? `Hari ini, ${quote.immediate.slotLabel} (${jam(quote.immediate.start)}–${jam(quote.immediate.end)})`
+                  : quote?.immediate?.error || 'Memeriksa jadwal…'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('terjadwal')
+                if (!date && quote?.schedule?.[0]) setDate(quote.schedule[0].date)
+              }}
+              className={`rounded-xl border-2 p-3 text-left transition ${mode === 'terjadwal' ? 'border-lpi bg-lpi-light' : 'border-lpi-line bg-white'}`}
+            >
+              <span className="flex items-center gap-2 text-sm font-extrabold">
+                <CalendarDays className="h-4 w-4 text-lpi" /> Terjadwal
+              </span>
+              <span className="mt-1 block text-xs text-lpi-muted">Pilih hari dan jam yang cocok untuk Anda</span>
+            </button>
+          </div>
+
+          {mode === 'terjadwal' && quote?.schedule && (
+            <div className="mt-3 space-y-3">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {quote.schedule.map((day, i) => {
+                  const f = formatDay(day.date)
+                  const active = date === day.date
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      onClick={() => {
+                        setDate(day.date)
+                        setSlotId('')
+                      }}
+                      className={`shrink-0 rounded-xl border-2 px-4 py-2 text-center ${active ? 'border-lpi bg-lpi text-white' : 'border-lpi-line bg-white'}`}
+                    >
+                      <span className="block text-sm font-bold">{i === 0 ? 'Besok' : f.hari}</span>
+                      <span className={`block text-xs ${active ? 'text-white/90' : 'text-lpi-muted'}`}>{f.tanggal}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(quote.schedule.find((d) => d.date === date)?.slots || []).map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={!s.available}
+                    onClick={() => setSlotId(s.id)}
+                    className={`rounded-xl border-2 p-3 text-left disabled:cursor-not-allowed disabled:opacity-50 ${slotId === s.id ? 'border-lpi bg-lpi-light' : 'border-lpi-line bg-white'}`}
+                  >
+                    <span className="block text-sm font-extrabold">{s.label}</span>
+                    <span className="block text-xs text-lpi-muted">
+                      {jam(s.start)}–{jam(s.end)}
+                    </span>
+                    {!s.available && <span className="mt-1 block text-xs font-bold text-[#9B2C2C]">{s.reason === 'penuh' ? 'Penuh' : s.reason === 'terlalu_berat' ? 'Terlalu berat' : 'Sudah lewat'}</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {deliveryErr && <p className="mt-3 rounded-xl bg-[#FDECEC] px-4 py-3 text-sm text-[#9B2C2C]">{deliveryErr}</p>}
+          {deliveryOk && (
+            <p className="mt-3 text-sm font-semibold text-lpi">
+              Dikirim {quote.delivery.mode === 'sekarang' ? 'hari ini' : `${formatDay(quote.delivery.date).hari}, ${formatDay(quote.delivery.date).tanggal}`} · {quote.delivery.slotLabel} ({jam(quote.delivery.start)}–{jam(quote.delivery.end)})
+            </p>
+          )}
+        </Section>
+
+        <Section icon={Tag} title="Kode voucher">
+          <div className="flex gap-2">
+            <input
+              className={inputClass}
+              value={voucherInput}
+              onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && applyVoucher()}
+              placeholder="Punya kode voucher?"
+              maxLength={30}
+            />
+            <button type="button" onClick={applyVoucher} className="h-12 shrink-0 rounded-xl bg-lpi px-5 text-sm font-bold text-white hover:bg-lpi-dark">
+              Pakai
+            </button>
+          </div>
+          {voucherCode && quote?.voucherError && <p className="mt-2 text-sm text-[#9B2C2C]">{quote.voucherError}</p>}
+          {voucherCode && quote && !quote.voucherError && pricing?.voucherCode && (
+            <p className="mt-2 flex items-center justify-between text-sm font-semibold text-lpi">
+              <span>Voucher {pricing.voucherCode} dipakai</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setVoucherCode('')
+                  setVoucherInput('')
+                }}
+                className="text-xs font-normal text-lpi-muted underline"
+              >
+                Hapus
+              </button>
+            </p>
+          )}
+        </Section>
+
+        <Section title="Rincian biaya">
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-lpi-muted">Belanja</dt>
+              <dd className="font-semibold">{formatIDR(pricing?.subtotal ?? cartTotal)}</dd>
+            </div>
+            {pricing?.discountShop > 0 && (
+              <div className="flex justify-between text-lpi">
+                <dt>Diskon voucher</dt>
+                <dd className="font-semibold">− {formatIDR(pricing.discountShop)}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-lpi-muted">Ongkos kirim</dt>
+              <dd className="font-semibold">
+                {!zoneOk ? (
+                  <span className="text-lpi-muted">dihitung setelah lokasi dibagikan</span>
+                ) : pricing.freeShipping ? (
+                  <span className="text-lpi">Gratis</span>
+                ) : (
+                  formatIDR(pricing.shippingFee)
+                )}
+              </dd>
+            </div>
+            {pricing?.shippingDiscount > 0 && (
+              <div className="flex justify-between text-lpi">
+                <dt>Diskon ongkir</dt>
+                <dd className="font-semibold">− {formatIDR(pricing.shippingDiscount)}</dd>
+              </div>
+            )}
+            {zoneOk && !pricing.freeShipping && quote.zone.freeShippingMin - pricing.subtotalAfter > 0 && (
+              <p className="rounded-lg bg-lpi-light px-3 py-2 text-xs text-lpi">Tambah belanja {formatIDR(quote.zone.freeShippingMin - pricing.subtotalAfter)} lagi untuk gratis ongkir.</p>
+            )}
+            <div className="flex items-baseline justify-between border-t border-dashed border-lpi-line pt-3">
+              <dt className="text-base font-extrabold">Total</dt>
+              <dd className="text-2xl font-extrabold text-lpi">{zoneOk ? formatIDR(pricing.total) : formatIDR(pricing?.subtotal ?? cartTotal)}</dd>
+            </div>
+          </dl>
+        </Section>
+      </main>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-lpi-line bg-white p-3">
+        <div className="mx-auto max-w-2xl">
+          <button
+            type="button"
+            onClick={handlePay}
+            disabled={loading || !ready}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-lpi text-base font-bold text-white transition hover:bg-lpi-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading || quoting ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
+            {ready ? `Bayar ${formatIDR(pricing.total)}` : 'Lengkapi data untuk membayar'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
