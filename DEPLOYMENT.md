@@ -49,8 +49,9 @@ Foto produk yang diunggah lewat admin disimpan di volume `uploads_data`, bukan d
 database. Saat data dipindah antar server (mis. KVM 1 ke KVM 2), database ikut
 tetapi foto TIDAK otomatis ikut: produk masih menunjuk ke berkas yang tidak ada
 (`/api/uploads/...` kode 404). Tampilan toko menampilkan kotak ikon sebagai
-pengganti; unggah ulang fotonya lewat admin. Foto bawaan template
-(`public/landing/*`) tetap ada karena logo dan hero memakainya.
+pengganti; unggah ulang fotonya lewat admin. Foto contoh bawaan template sudah
+dihapus dari kode; satu-satunya berkas gambar di kode kini `public/logo.png`
+(alamat lama `/landing/logo.png` dialihkan ke sana lewat `next.config.js`).
 
 ### Backup dan kembali ke versi lama
 

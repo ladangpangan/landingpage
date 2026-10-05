@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import SafeImage from '../../_components/safe-image'
 import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
@@ -61,7 +62,7 @@ const NAV_ITEMS = [
   { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
   { id: 'products', label: 'Produk & Promo', icon: Package },
   { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
-  { id: 'contact', label: 'Kontak & Banner', icon: Phone },
+  { id: 'contact', label: 'Pengaturan Toko', icon: Phone },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard, ownerOnly: true },
   { id: 'accounts', label: 'Akun', icon: Users },
 ]
@@ -972,7 +973,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                               >
                                 <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#D6EBDC] bg-[#FBFEFC]">
                                   {p.image && (
-                                    <Image src={p.image} alt="" fill sizes="40px" className="object-cover" />
+                                    <SafeImage src={p.image} alt="" fill sizes="40px" className="object-cover" />
                                   )}
                                 </div>
                                 <div className="min-w-0">

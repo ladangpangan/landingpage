@@ -9,7 +9,8 @@ import { ImageOff } from 'lucide-react'
 // Dipakai di dalam wadah `relative` (bersama prop `fill`).
 export default function SafeImage({ fallback, ...props }) {
   const [failedSrc, setFailedSrc] = useState(null)
-  if (failedSrc !== null && failedSrc === props.src) {
+  const missing = !props.src || (failedSrc !== null && failedSrc === props.src)
+  if (missing) {
     return (
       fallback ?? (
         <div className="absolute inset-0 flex items-center justify-center bg-lpi-light text-lpi-muted" role="img" aria-label={props.alt}>

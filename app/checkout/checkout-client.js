@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '../_components/safe-image'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Bike, Loader2, MoreHorizontal, ShieldCheck, ShoppingBag, Truck } from 'lucide-react'
 import { toast } from 'sonner'
@@ -152,7 +152,7 @@ export default function CheckoutClient({
             {items.map((it) => (
               <div key={`${it.kind || 'produk'}:${it.productId}`} className="flex items-center gap-3">
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#EEF8F1]">
-                  <Image src={it.image} alt={it.name} fill sizes="56px" className="object-cover" />
+                  <SafeImage src={it.image} alt={it.name} fill sizes="56px" className="object-cover" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-[#142A1C]">{it.name}</p>
