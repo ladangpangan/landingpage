@@ -8,6 +8,12 @@ const TITLE = 'ladangpangan.id — Ayam Frozen Segar Langsung dari Peternak'
 const DESCRIPTION =
   'Beli ayam frozen berkualitas langsung dari peternak mitra ladangpangan.id. Bersertifikat Halal & NKV, harga bersaing, pesan dan bayar online tanpa ribet.'
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#1E5A3A',
+}
+
 export async function generateMetadata() {
   const settings = await getPublicLandingSettings()
   const ogImage = settings.logoUrl || '/landing/produk-1.jpeg'
@@ -58,6 +64,14 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="id">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        />
+      </head>
       <body>
         <script
           type="application/ld+json"

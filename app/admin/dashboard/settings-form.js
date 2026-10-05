@@ -45,6 +45,7 @@ const newProduct = () => ({
   description: '',
   isPromo: false,
   erpCode: '',
+  stock: null,
 })
 const newSlide = () => ({
   id: `slide-${Date.now()}-${uid++}`,
@@ -244,6 +245,17 @@ function ProductEditModal({ product, isNew, onChange, onSave, onClose, available
               value={product.price || ''}
               onChange={(e) => onChange({ price: Number(e.target.value) || 0 })}
               placeholder="32000"
+            />
+          </Field>
+          <Field label="Stok" hint="Kosongkan bila stok tidak dihitung (selalu tersedia). Isi 0 untuk menandai habis.">
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              className={inputClass}
+              value={product.stock ?? ''}
+              onChange={(e) => onChange({ stock: e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+              placeholder="Tidak dihitung"
             />
           </Field>
           <Field label="Kode ERP" hint="Dipakai untuk menyambungkan ke ERP nanti. Boleh dikosongkan.">
@@ -915,6 +927,7 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
                           <th className="px-4 py-3">Produk</th>
                           <th className="px-4 py-3">Kategori</th>
                           <th className="px-4 py-3">Harga</th>
+                          <th className="px-4 py-3">Stok</th>
                           <th className="px-4 py-3">Promo</th>
                           <th className="px-4 py-3 text-right">Aksi</th>
                         </tr>
@@ -941,6 +954,9 @@ export default function SettingsForm({ initialSettings, availableImages, bundled
                             </td>
                             <td className="px-4 py-2.5 text-[#4C6356]">{p.category || '-'}</td>
                             <td className="px-4 py-2.5 whitespace-nowrap text-[#4C6356]">{formatIDR(p.price)}</td>
+                            <td className="px-4 py-2.5 whitespace-nowrap text-[#4C6356]">
+                              {p.stock === null || p.stock === undefined ? 'Tak dihitung' : p.stock <= 0 ? 'Habis' : p.stock}
+                            </td>
                             <td className="px-4 py-2.5">
                               {p.isPromo && (
                                 <span className="rounded-full bg-[#E1F4E7] px-2.5 py-1 text-xs font-medium text-[#22824E]">
