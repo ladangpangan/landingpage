@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import SafeImage from '../_components/safe-image'
 import { useCart } from '@/lib/cart-context'
 import { formatIDR } from '@/lib/format'
+import { getLocalProfile, saveLocalAddress } from '@/lib/saved-profile'
 
 const inputClass =
   'w-full rounded-xl border border-lpi-line bg-white px-4 py-3 text-base text-lpi-ink outline-none placeholder:text-lpi-muted focus:border-lpi focus:ring-2 focus:ring-lpi/15'
@@ -46,6 +47,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
   const [note, setNote] = useState('')
   const [me, setMe] = useState(null) // { enabled, customer }
   const [saveAddr, setSaveAddr] = useState(true)
+  const [localAddrs, setLocalAddrs] = useState([])
 
   const [location, setLocation] = useState(null) // { lat, lng }
   const [locState, setLocState] = useState('idle') // idle | loading | ok | denied | error
@@ -123,9 +125,15 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
       .then((d) => {
         setMe(d)
         if (d.customer?.name) setName((cur) => cur || d.customer.name)
+        if (d.customer?.phone) setPhone((cur) => cur || d.customer.phone)
       })
       .catch(() => {})
+    // Pembeli tanpa login: nomor dan alamat yang tersimpan di HP ini.
+    const prof = getLocalProfile()
+    setLocalAddrs(prof.addresses)
+    if (prof.phone) setPhone((cur) => cur || prof.phone)
   }, [])
+  const savedAddrs = me?.customer ? me.customer.addresses || [] : localAddrs
 
   function pickSavedAddress(a) {
     setName(a.name)
@@ -205,6 +213,9 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
         throw new Error(data.error || 'Gagal membuat transaksi.')
       }
 
+      if (!me?.customer && saveAddr && location) {
+        saveLocalAddress({ label: 'Alamat', name, phone, address, lat: location.lat, lng: location.lng })
+      }
       if (me?.customer && saveAddr) {
         fetch('/api/akun/alamat', {
           method: 'POST',
@@ -287,11 +298,11 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
 
         <Section title="Data penerima">
           <div className="space-y-3">
-            {me?.customer?.addresses?.length > 0 && (
+            {savedAddrs.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-lpi-ink">Pakai alamat tersimpan</p>
                 <div className="flex flex-wrap gap-2">
-                  {me.customer.addresses.map((a) => (
+                  {savedAddrs.map((a) => (
                     <button key={a.id} type="button" onClick={() => pickSavedAddress(a)} className="min-h-11 rounded-xl border-2 border-lpi bg-white px-4 text-sm font-bold text-lpi hover:bg-lpi-light">
                       {a.label}
                     </button>
@@ -308,10 +319,10 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
             <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Nomor WhatsApp, mis. 0812xxxxxxx" inputMode="tel" autoComplete="tel" maxLength={30} />
             <textarea className={inputClass} rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Alamat lengkap (jalan, nomor, RT/RW, patokan)" maxLength={200} />
             <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan untuk kurir (boleh kosong)" maxLength={200} />
-            {me?.customer && (
+            {(me?.customer || me) && (
               <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
                 <input type="checkbox" checked={saveAddr} onChange={(e) => setSaveAddr(e.target.checked)} className="h-5 w-5 accent-[#1E5A3A]" />
-                Simpan alamat ini untuk belanja berikutnya
+                {me?.customer ? 'Simpan alamat ini untuk belanja berikutnya' : 'Simpan alamat ini di HP ini untuk belanja berikutnya'}
               </label>
             )}
           </div>
