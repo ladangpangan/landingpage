@@ -5,10 +5,11 @@ import Link from 'next/link'
 import SafeImage from './safe-image'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { MapPin, MessageCircle, Search, ShoppingCart, ShieldCheck, User, X } from 'lucide-react'
+import { MapPin, Menu, MessageCircle, Search, ShoppingCart, ShieldCheck, User, X } from 'lucide-react'
 import { useCart } from '@/lib/cart-context'
 import { formatIDR } from '@/lib/format'
 import NotifBell from '@/app/_components/notif-bell'
+import SideMenu from '@/app/_components/side-menu'
 import { makeWaLink } from '@/lib/wa'
 import { QtyStepper } from './cards'
 
@@ -111,6 +112,7 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
   const router = useRouter()
   const { count } = useCart()
   const [cartOpen, setCartOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
   const [acct, setAcct] = useState(null) // { enabled, customer }
 
@@ -136,6 +138,8 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
       <header className="sticky top-0 z-40 border-b border-lpi-line bg-white">
         <div className="mx-auto max-w-6xl px-4 py-3 sm:px-8">
           <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+            <button type="button" onClick={() => setMenuOpen(true)} aria-label="Buka menu" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-lpi-line bg-white text-lpi"><Menu className="h-5 w-5" /></button>
             <Link href="/" aria-label="Beranda ladangpangan.id" className="flex items-center">
               {settings.logoUrl ? (
                 <span className="relative block h-10 w-36">
@@ -147,14 +151,13 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
                 </span>
               )}
             </Link>
+            </div>
             <div className="flex items-center gap-2">
             <NotifBell />
-            {acct?.enabled && (
-              <Link href="/akun" aria-label="Akun saya" className="flex h-12 items-center gap-2 rounded-xl border border-lpi-line bg-white px-3 text-sm font-bold text-lpi">
-                <User className="h-5 w-5" />
-                <span className="hidden sm:inline">{acct.customer ? acct.customer.name.split(' ')[0] || 'Akun' : 'Masuk'}</span>
-              </Link>
-            )}
+            <Link href="/akun" aria-label="Pengaturan" className="flex h-12 items-center gap-2 rounded-xl border border-lpi-line bg-white px-3 text-sm font-bold text-lpi">
+              <User className="h-5 w-5" />
+              <span className="hidden sm:inline">{acct?.customer ? acct.customer.name.split(' ')[0] || 'Akun' : 'Pengaturan'}</span>
+            </Link>
             <button
               type="button"
               onClick={() => setCartOpen(true)}
@@ -239,6 +242,7 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
         </button>
       )}
 
+      <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} waLink={waLink} />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} waLink={waLink} />
     </div>
   )
