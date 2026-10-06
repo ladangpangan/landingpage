@@ -463,6 +463,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [hasIpToken, setHasIpToken] = useState(!!initialSettings.hasIpaymuNotifyToken)
   const [ipKeyPreview, setIpKeyPreview] = useState(initialSettings.ipaymuApiKeyPreview)
   const [payEvents, setPayEvents] = useState([])
+  const [testing, setTesting] = useState('')
+  const [testResult, setTestResult] = useState(null)
   const [saving, setSaving] = useState(false)
   const [savingProducts, setSavingProducts] = useState(false)
   const [productSearch, setProductSearch] = useState('')
@@ -473,6 +475,21 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [mediaLoading, setMediaLoading] = useState(true)
   const [mediaUploading, setMediaUploading] = useState(false)
   const mediaFileRef = useRef(null)
+
+  // Tes koneksi memakai kunci yang sudah tersimpan: simpan dulu bila baru mengganti kunci/mode.
+  async function testGateway(id) {
+    setTesting(id)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/admin/payment-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gateway: id }) })
+      const data = await res.json().catch(() => ({}))
+      setTestResult({ gateway: id, ok: !!data.ok, message: data.message || data.error || 'Tes gagal.' })
+    } catch {
+      setTestResult({ gateway: id, ok: false, message: 'Tes gagal. Periksa koneksi internet Anda.' })
+    } finally {
+      setTesting('')
+    }
+  }
 
   useEffect(() => {
     if (tab !== 'payment' || !isOwner) return
@@ -1205,7 +1222,7 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                       {hasMayarKey && hasMayarToken ? 'Mayar siap dipakai' : 'Mayar belum lengkap: isi API Key dan Webhook Token'}
                     </span>
                   </div>
-                  <Field label="API Key Mayar" hint={hasMayarKey ? `Tersimpan (${mayarKeyPreview}) — kosongkan untuk mempertahankan.` : 'Buat di web.mayar.id (menu API Keys). Sandbox dan Production punya kunci berbeda.'}>
+                  <Field label="API Key Mayar" hint={hasMayarKey ? `Tersimpan (${mayarKeyPreview}) — kosongkan untuk mempertahankan.` : 'Buat di web.mayar.id (menu API Keys) dan pilih izin "Read & Write" (kunci "Read Only" tidak bisa membuat tagihan). Sandbox (web.mayar.club) dan Production punya kunci berbeda.'}>
                     <input type="password" autoComplete="off" className={inputClass} value={mayarKey} onChange={(e) => setMayarKey(e.target.value)} placeholder={hasMayarKey ? '••••••••••••' : 'Tempel API Key'} />
                   </Field>
                   <Field label="Webhook Token" hint={hasMayarToken ? 'Tersimpan — kosongkan untuk mempertahankan.' : 'Karang sendiri sebuah teks acak panjang (min. 24 huruf/angka). Teks yang sama dimasukkan di Mayar saat mendaftarkan webhook.'}>
@@ -1223,6 +1240,15 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                     <button type="button" role="switch" aria-checked={mayarProd} onClick={() => setMayarProd((v) => !v)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${mayarProd ? 'bg-[#2FA966]' : 'bg-[#D6EBDC]'}`}>
                       <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${mayarProd ? 'left-5' : 'left-0.5'}`} />
                     </button>
+                  </div>
+                  <div className="space-y-2">
+                    <button type="button" onClick={() => testGateway('mayar')} disabled={!!testing} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1E5A3A] bg-white text-sm font-semibold text-[#1E5A3A] disabled:opacity-60">
+                      {testing === 'mayar' && <Loader2 className="h-4 w-4 animate-spin" />} Tes koneksi
+                    </button>
+                    <p className="text-xs text-[#7E9488]">Memakai kunci yang sudah tersimpan. Tekan Simpan dulu bila baru mengganti kunci atau saklar Production.</p>
+                    {testResult?.gateway === 'mayar' && (
+                      <p className={`rounded-xl p-3 text-sm ${testResult.ok ? 'bg-[#E3F0E7] text-[#1E5A3A]' : 'bg-red-50 text-red-700'}`}>{testResult.message}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#142A1C]">Pemberitahuan terakhir dari penyedia</p>
@@ -1272,6 +1298,15 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                     <button type="button" role="switch" aria-checked={ipProd} onClick={() => setIpProd((v) => !v)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${ipProd ? 'bg-[#2FA966]' : 'bg-[#D6EBDC]'}`}>
                       <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${ipProd ? 'left-5' : 'left-0.5'}`} />
                     </button>
+                  </div>
+                  <div className="space-y-2">
+                    <button type="button" onClick={() => testGateway('ipaymu')} disabled={!!testing} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1E5A3A] bg-white text-sm font-semibold text-[#1E5A3A] disabled:opacity-60">
+                      {testing === 'ipaymu' && <Loader2 className="h-4 w-4 animate-spin" />} Tes koneksi
+                    </button>
+                    <p className="text-xs text-[#7E9488]">Memakai kunci yang sudah tersimpan. Tekan Simpan dulu bila baru mengganti kunci atau saklar Production.</p>
+                    {testResult?.gateway === 'ipaymu' && (
+                      <p className={`rounded-xl p-3 text-sm ${testResult.ok ? 'bg-[#E3F0E7] text-[#1E5A3A]' : 'bg-red-50 text-red-700'}`}>{testResult.message}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#142A1C]">Pemberitahuan terakhir dari penyedia</p>

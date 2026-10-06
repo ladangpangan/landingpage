@@ -55,3 +55,16 @@ test('token alamat kabar dibandingkan aman', () => {
   assert.ok(!verifyNotifyToken('', 'abc'))
   assert.ok(!verifyNotifyToken('a', ''))
 })
+
+import { interpretIpaymuTest } from '../lib/ipaymu.js'
+test('tes koneksi iPaymu: diterima, mode tertukar, ditolak, galat jaringan', () => {
+  assert.equal(interpretIpaymuTest({ production: false, here: { status: 200 } }).ok, true)
+  const swapped = interpretIpaymuTest({ production: false, here: { status: 401 }, other: { status: 200 } })
+  assert.equal(swapped.ok, false)
+  assert.match(swapped.message, /Production/)
+  assert.match(swapped.message, /Nyalakan/)
+  assert.match(interpretIpaymuTest({ production: true, here: { status: 401 }, other: { status: 200 } }).message, /Matikan/)
+  assert.match(interpretIpaymuTest({ production: false, here: { status: 401 }, other: { status: 401 } }).message, /kedua mode/)
+  assert.match(interpretIpaymuTest({ production: false, here: { error: 'x' } }).message, /Tidak bisa menghubungi/)
+  assert.match(interpretIpaymuTest({ production: false, here: { status: 500 } }).message, /500/)
+})
