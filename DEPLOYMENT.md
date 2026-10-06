@@ -374,3 +374,11 @@ Catatan: Mayar mewajibkan email pembeli; toko memakai email Google bila pembeli 
 Memanggil kurir dan status otomatis (Biteship):
 - Setelah pesanan Dibayar lalu Dikemas, admin menekan **Panggil Kurir** di kartu pesanan. Bila gagal (mis. "Area tidak terjangkau") pesan Biteship tampil dan tombol bisa ditekan lagi.
 - Webhook: di admin tab Kurir Instan isi **Webhook Token** (teks acak), Simpan, lalu daftarkan di dashboard Biteship (Integrasi → Webhook): URL `https://marketplace.ladangpangan.id/api/biteship/webhook`, Headers Signature Key `x-webhook-token`, Headers Signature Secret = token yang sama, event pesanan semua. (Cadangan: `?token=<token>` di alamat.) Bila status tidak bergerak otomatis, lihat "Kabar terakhir dari Biteship" di tab itu dan kirim isinya ke developer.
+
+
+## iPaymu (pembayaran ketiga)
+1. Admin > Pengaturan > Payment Gateway > pilih iPaymu.
+2. Isi Nomor VA, API Key (dashboard iPaymu > Integrasi), dan Token Notifikasi (teks acak min. 24 karakter karangan sendiri). Nyalakan "Production" hanya saat siap rilis.
+3. Alamat notifikasi dikirim otomatis per pesanan (`/api/ipaymu/notification?token=...`); tidak perlu didaftarkan manual.
+4. Uji pertama: buat pesanan, bayar di sandbox, lalu lihat "Pemberitahuan terakhir" di admin. Bila status pesanan tidak berubah, bentuk kabar iPaymu perlu disesuaikan.
+5. Kembali ke versi lama: pilih Midtrans/Mayar lagi di admin.

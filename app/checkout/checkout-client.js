@@ -67,7 +67,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
   const snapSrc = midtransIsProduction ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js'
 
   useEffect(() => {
-    if (paymentGateway === 'mayar' || !midtransClientKey || typeof window === 'undefined') return
+    if (paymentGateway === 'mayar' || paymentGateway === 'ipaymu' || !midtransClientKey || typeof window === 'undefined') return
     if (window.snap) {
       setSnapReady(true)
       return
@@ -180,7 +180,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
       if (!zoneOk) return toast.error('Bagikan lokasi Anda dulu supaya ongkir bisa dihitung.')
       if (!deliveryOk) return toast.error('Pilih cara dan jam pengiriman.')
     }
-    if (paymentGateway !== 'mayar') {
+    if (paymentGateway !== 'mayar' && paymentGateway !== 'ipaymu') {
       if (!midtransClientKey) return toast.error('Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.')
       if (!snapReady || !window.snap) return toast.error('Pembayaran masih dimuat, coba lagi sebentar lagi.')
     }
@@ -212,8 +212,8 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
           body: JSON.stringify({ label: 'Alamat', name, phone, address, lat: location.lat, lng: location.lng }),
         }).catch(() => {})
       }
-      // Mayar: pembeli diantar ke halaman bayar Mayar, lalu kembali ke halaman pesanan.
-      if (data.gateway === 'mayar' && data.redirectUrl) {
+      // Mayar/iPaymu: pembeli diantar ke halaman bayar penyedia, lalu kembali ke halaman pesanan.
+      if ((data.gateway === 'mayar' || data.gateway === 'ipaymu') && data.redirectUrl) {
         clearCart()
         window.location.href = data.redirectUrl
         return

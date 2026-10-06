@@ -455,6 +455,13 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
   const [hasMayarKey, setHasMayarKey] = useState(!!initialSettings.hasMayarApiKey)
   const [hasMayarToken, setHasMayarToken] = useState(!!initialSettings.hasMayarWebhookToken)
   const [mayarKeyPreview, setMayarKeyPreview] = useState(initialSettings.mayarApiKeyPreview)
+  const [ipVa, setIpVa] = useState(initialSettings.ipaymuVa || '')
+  const [ipKey, setIpKey] = useState('')
+  const [ipToken, setIpToken] = useState('')
+  const [ipProd, setIpProd] = useState(!!initialSettings.ipaymuIsProduction)
+  const [hasIpKey, setHasIpKey] = useState(!!initialSettings.hasIpaymuApiKey)
+  const [hasIpToken, setHasIpToken] = useState(!!initialSettings.hasIpaymuNotifyToken)
+  const [ipKeyPreview, setIpKeyPreview] = useState(initialSettings.ipaymuApiKeyPreview)
   const [payEvents, setPayEvents] = useState([])
   const [saving, setSaving] = useState(false)
   const [savingProducts, setSavingProducts] = useState(false)
@@ -677,6 +684,10 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           mayarApiKey: mayarKey,
           mayarWebhookToken: mayarToken,
           mayarIsProduction: mayarProd,
+          ipaymuVa: ipVa,
+          ipaymuApiKey: ipKey,
+          ipaymuNotifyToken: ipToken,
+          ipaymuIsProduction: ipProd,
         }),
       })
       const data = await res.json()
@@ -689,6 +700,11 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
       setMayarKeyPreview(data.mayarApiKeyPreview)
       setMayarKey('')
       setMayarToken('')
+      setHasIpKey(!!data.hasIpaymuApiKey)
+      setHasIpToken(!!data.hasIpaymuNotifyToken)
+      setIpKeyPreview(data.ipaymuApiKeyPreview)
+      setIpKey('')
+      setIpToken('')
       setServerKey('')
       toast.success('Pengaturan landing page berhasil disimpan.')
     } catch (error) {
@@ -1166,8 +1182,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
             <div className={`mx-auto w-full max-w-3xl ${cardClass}`}>
               <h2 className="text-base font-semibold text-[#142A1C]">Payment Gateway</h2>
               <p className="mt-1 text-sm text-[#4C6356]">Pilih satu penyedia pembayaran yang dipakai pembeli. Isi kunci keduanya bila perlu; yang aktif hanya yang dipilih.</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {[['midtrans', 'Midtrans'], ['mayar', 'Mayar.id']].map(([id, label]) => (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {[['midtrans', 'Midtrans'], ['mayar', 'Mayar.id'], ['ipaymu', 'iPaymu']].map(([id, label]) => (
                   <button
                     key={id}
                     type="button"
@@ -1212,6 +1228,55 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
                     <p className="text-sm font-semibold text-[#142A1C]">Pemberitahuan terakhir dari penyedia</p>
                     {payEvents.length === 0 ? (
                       <p className="mt-1 text-xs text-[#7E9488]">Belum ada. Setelah pembayaran uji coba, isinya muncul di sini (berguna bila status pesanan tidak berubah).</p>
+                    ) : (
+                      <ul className="mt-2 space-y-2">
+                        {payEvents.map((e, i) => (
+                          <li key={i} className="rounded-lg border border-[#D6EBDC] p-2 text-xs">
+                            <p className="font-semibold">{e.gateway} · {new Date(e.at).toLocaleString('id-ID')} · {e.outcome}</p>
+                            <p className="mt-1 break-all font-mono text-[11px] text-[#4C6356]">{e.payload}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {gateway === 'ipaymu' && (
+                <div className="mt-5 space-y-4 rounded-xl border border-[#D6EBDC] p-4">
+                  <h3 className="text-sm font-semibold text-[#142A1C]">Pengaturan iPaymu</h3>
+                  <div className="flex items-center gap-2 text-sm">
+                    {ipVa && hasIpKey && hasIpToken ? <CheckCircle2 className="h-4 w-4 text-[#2FA966]" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                    <span className={ipVa && hasIpKey && hasIpToken ? 'text-[#2FA966]' : 'text-red-600'}>
+                      {ipVa && hasIpKey && hasIpToken ? 'iPaymu siap dipakai' : 'iPaymu belum lengkap: isi VA, API Key, dan Token Notifikasi'}
+                    </span>
+                  </div>
+                  <Field label="Nomor VA iPaymu" hint="Angka VA dari dashboard iPaymu (menu Integrasi > API).">
+                    <input inputMode="numeric" autoComplete="off" className={inputClass} value={ipVa} onChange={(e) => setIpVa(e.target.value.replace(/\D/g, ''))} placeholder="Contoh: 0000001234567890" />
+                  </Field>
+                  <Field label="API Key iPaymu" hint={hasIpKey ? `Tersimpan (${ipKeyPreview}) — kosongkan untuk mempertahankan.` : 'Dari dashboard iPaymu. Sandbox dan Production punya kunci berbeda.'}>
+                    <input type="password" autoComplete="off" className={inputClass} value={ipKey} onChange={(e) => setIpKey(e.target.value)} placeholder={hasIpKey ? '••••••••••••' : 'Tempel API Key'} />
+                  </Field>
+                  <Field label="Token Notifikasi" hint={hasIpToken ? 'Tersimpan — kosongkan untuk mempertahankan.' : 'Karang sendiri teks acak panjang (min. 24 huruf/angka). Dipasang otomatis di alamat notifikasi; tidak perlu diisi di iPaymu.'}>
+                    <input type="password" autoComplete="off" className={inputClass} value={ipToken} onChange={(e) => setIpToken(e.target.value)} placeholder={hasIpToken ? '••••••••••••' : 'Teks rahasia acak'} />
+                  </Field>
+                  <div className="rounded-xl bg-[#F7FBF8] p-3 text-xs text-[#1F3A28]">
+                    <p className="font-semibold">Alamat notifikasi dikirim otomatis oleh toko ke iPaymu pada tiap pesanan:</p>
+                    <p className="mt-1 break-all font-mono">https://marketplace.ladangpangan.id/api/ipaymu/notification</p>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-[#D6EBDC] p-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#142A1C]">iPaymu mode Production</p>
+                      <p className="text-xs text-[#7E9488]">{ipProd ? 'AKTIF — pembayaran nyata.' : 'Nonaktif (Sandbox) — aman untuk uji coba.'}</p>
+                    </div>
+                    <button type="button" role="switch" aria-checked={ipProd} onClick={() => setIpProd((v) => !v)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${ipProd ? 'bg-[#2FA966]' : 'bg-[#D6EBDC]'}`}>
+                      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${ipProd ? 'left-5' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#142A1C]">Pemberitahuan terakhir dari penyedia</p>
+                    {payEvents.length === 0 ? (
+                      <p className="mt-1 text-xs text-[#7E9488]">Belum ada. Setelah pembayaran uji coba, isinya muncul di sini.</p>
                     ) : (
                       <ul className="mt-2 space-y-2">
                         {payEvents.map((e, i) => (

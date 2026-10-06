@@ -11,7 +11,7 @@ Rencana lengkap ada di `docs/rencana.md`. Cara deploy ada di `DEPLOYMENT.md`.
 - Satu branch baru per tahap, lalu Pull Request. Jangan pernah ubah `main` langsung.
 - Harga, ongkir, diskon, stok, kapasitas kirim: SELALU dihitung di server (jangan percaya angka dari browser).
 - Jangan tulis password/kunci rahasia di kode. Rahasia hanya lewat environment variable di VPS.
-- Jangan ganti teknologi: Next.js 15, Tailwind, MongoDB, Docker. Pembayaran: Midtrans dan Mayar.id (pilihan Owner di admin; Mayar disetujui pemilik karena review bisnis Midtrans belum selesai).
+- Jangan ganti teknologi: Next.js 15, Tailwind, MongoDB, Docker. Pembayaran: Midtrans, Mayar.id, dan iPaymu (pilihan Owner di admin; Mayar disetujui pemilik karena review bisnis Midtrans belum selesai).
 - Selama pengembangan pakai Midtrans SANDBOX; PRODUCTION hanya saat pemilik bilang siap rilis.
 - Sebelum memasang ke VPS: pandu pemilik membuat backup sederhana dan tuliskan cara kembali ke versi lama.
 - Aplikasi belum rilis & tanpa pembeli sungguhan: boleh ubah besar-besaran. Data contoh boleh dibuang; yang dipertahankan hanya logo, nomor WhatsApp, kunci Midtrans.
@@ -69,3 +69,5 @@ Rencana lengkap ada di `docs/rencana.md`. Cara deploy ada di `DEPLOYMENT.md`.
 - `vps_docker_get` menampilkan `environment` (rahasia) apa adanya: jangan salin nilai ke repo/dokumen. Pemilik sudah mengatakan boleh live berubah langsung (belum ada pengguna) dan sudah membuat backup sendiri; tetap hati-hati.
 - Variabel: `MONGO_ROOT_USER/PASSWORD` (harus tetap sama), `MONGO_DB_NAME`, `ADMIN_OWNER_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `MIDTRANS_*`, `ERP_INTEGRATION_URL/KEY`.
 - Dari sandbox cloud tidak bisa membuka situs publik (proxy); verifikasi lewat log/status wadah, minta pemilik mencoba lewat HP.
+
+- iPaymu (branch `claude/pembayaran-ipaymu`): `lib/ipaymu.js` (murni, teruji), `lib/ipaymu-api.js`, `/api/ipaymu/notification` (token di `?token=` pada notifyUrl yang dikirim tiap pesanan; JSON/form diterima), `applyIpaymuEvent` di `lib/orders.js` (cocok lewat reference_id = nomor pesanan). BENTUK BALASAN & KABAR iPaymu BELUM TERVERIFIKASI dengan akun nyata: cek daftar "Pemberitahuan terakhir" di admin saat uji pertama. Halaman wajib verifikasi: /faq, /kebijakan-pengembalian-dana, /syarat-dan-ketentuan, /kontak (draf, harus ditinjau pemilik).
