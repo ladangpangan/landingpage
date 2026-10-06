@@ -7,6 +7,8 @@ import { ArrowLeft, Check, Copy, Loader2, MessageCircle, Package, PackageCheck, 
 import { toast } from 'sonner'
 import { formatIDR } from '@/lib/format'
 import { useCart } from '@/lib/cart-context'
+import { saveOrder } from '@/lib/saved-orders'
+import { latestMessage } from '@/lib/order-timeline'
 
 const STEPS = [
   ['dibayar', 'Dibayar', Wallet],
@@ -36,6 +38,7 @@ export default function OrderClient({ orderId, accessKey, waLink, midtransClient
   const [busy, setBusy] = useState(false)
   const [snapReady, setSnapReady] = useState(false)
   const timer = useRef(null)
+  const lastSig = useRef(null)
   const base = `/api/pesanan/${encodeURIComponent(orderId)}`
   const q = `?k=${encodeURIComponent(accessKey)}`
 
@@ -49,10 +52,17 @@ export default function OrderClient({ orderId, accessKey, waLink, midtransClient
       }
       setError('')
       setOrder(data.order)
+      // Simpan di HP ini (untuk lonceng) dan tandai sudah dilihat. Beri tahu bila ada perubahan sejak putaran lalu.
+      const o = data.order
+      if (lastSig.current && lastSig.current !== o.signature) {
+        toast.info(latestMessage(o.status, o.courierTrack?.status) || 'Status pesanan diperbarui.')
+      }
+      lastSig.current = o.signature
+      saveOrder(orderId, accessKey, o.signature)
     } catch {
       /* jaringan putus sebentar: coba lagi di putaran berikutnya */
     }
-  }, [base, q])
+  }, [base, q, orderId, accessKey])
 
   useEffect(() => {
     load()
@@ -187,6 +197,23 @@ export default function OrderClient({ orderId, accessKey, waLink, midtransClient
                 <p className="mt-1 text-lpi-muted">{order.courierTrack.driverName ? `Pengemudi: ${order.courierTrack.driverName}${order.courierTrack.driverPhone ? ` · ${order.courierTrack.driverPhone}` : ''}` : 'Kurir sedang dicarikan atau dalam perjalanan.'}</p>
                 {order.courierTrack.waybillId && <p className="text-lpi-muted">Resi: {order.courierTrack.waybillId}</p>}
                 {order.courierTrack.link && <a href={order.courierTrack.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center rounded-xl border border-lpi-line px-4 font-bold text-lpi">Lacak kurir</a>}
+              </section>
+            )}
+
+            {order.timeline?.length > 0 && (
+              <section className="rounded-2xl border border-lpi-line bg-white p-4 text-sm">
+                <h3 className="font-extrabold">Riwayat pesanan</h3>
+                <ol className="mt-3 space-y-3">
+                  {order.timeline.map((t, i) => (
+                    <li key={`${t.key}-${t.at}`} className="flex gap-3">
+                      <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${i === 0 ? 'bg-lpi' : 'bg-lpi-line'}`} />
+                      <div>
+                        <p className={i === 0 ? 'font-bold' : ''}>{t.label}</p>
+                        <p className="text-xs text-lpi-muted">{new Date(t.at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               </section>
             )}
 

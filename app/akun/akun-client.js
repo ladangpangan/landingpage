@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, LogOut, MapPin, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatIDR } from '@/lib/format'
+import { getSavedOrders, saveOrder } from '@/lib/saved-orders'
+import { FINAL_STATUSES } from '@/lib/order-timeline'
 
 const ERRORS = {
   'belum-aktif': 'Login Google belum diaktifkan oleh toko. Anda tetap bisa belanja tanpa login.',
@@ -19,6 +21,14 @@ export default function AkunClient({ enabled, customer, orders, error }) {
   const router = useRouter()
   const [addresses, setAddresses] = useState(customer?.addresses || [])
   const [busy, setBusy] = useState(false)
+
+  // Pesanan aktif akun ini ikut dipantau lonceng di HP ini.
+  useEffect(() => {
+    const have = new Set(getSavedOrders().map((o) => o.orderId))
+    for (const o of (orders || []).filter((x) => !FINAL_STATUSES.includes(x.status)).slice(0, 5)) {
+      if (!have.has(o.orderId)) saveOrder(o.orderId, o.key)
+    }
+  }, [orders])
 
   async function logout() {
     setBusy(true)

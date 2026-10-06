@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { MapPin, MessageCircle, Search, ShoppingCart, ShieldCheck, User, X } from 'lucide-react'
 import { useCart } from '@/lib/cart-context'
 import { formatIDR } from '@/lib/format'
+import NotifBell from '@/app/_components/notif-bell'
 import { makeWaLink } from '@/lib/wa'
 import { QtyStepper } from './cards'
 
@@ -147,6 +148,7 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
               )}
             </Link>
             <div className="flex items-center gap-2">
+            <NotifBell />
             {acct?.enabled && (
               <Link href="/akun" aria-label="Akun saya" className="flex h-12 items-center gap-2 rounded-xl border border-lpi-line bg-white px-3 text-sm font-bold text-lpi">
                 <User className="h-5 w-5" />
