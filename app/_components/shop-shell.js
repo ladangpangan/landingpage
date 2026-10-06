@@ -219,6 +219,10 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
           <Link href="/faq" className="underline underline-offset-4 hover:text-white">
             FAQ
           </Link>
+          <Link href="/kontak" className="underline underline-offset-4 hover:text-white">
+            Kontak
+          </Link>
+          <span className="basis-full">Royal Crown Palace, RA. 28, Jl. Anwar Hamzah, Tambak Oso, Waru, Sidoarjo 61256 · ladangpangan.id@gmail.com</span>
         </div>
       </footer>
 
