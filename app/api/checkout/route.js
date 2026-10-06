@@ -6,9 +6,11 @@ import { buildMidtransItems } from '@/lib/checkout-math'
 import { reserveStock, releaseStock } from '@/lib/stock'
 import { reserveSlot, releaseSlot } from '@/lib/delivery'
 import { reserveVoucher, releaseVoucher } from '@/lib/vouchers'
-import { createOrder, attachSnapToken, failOrderBeforePayment, attachMayarInvoice, expireStaleMayarOrders } from '@/lib/orders'
+import { createOrder, attachSnapToken, failOrderBeforePayment, attachMayarInvoice, attachIpaymuPayment, expireStaleMayarOrders } from '@/lib/orders'
 import { getMayarConfig, createMayarInvoice } from '@/lib/mayar-api'
 import { buildInvoiceBody } from '@/lib/mayar'
+import { getIpaymuConfig, createIpaymuPayment } from '@/lib/ipaymu-api'
+import { buildPaymentBody as buildIpaymuBody } from '@/lib/ipaymu'
 import { siteOrigin } from '@/lib/site-url'
 import { validLatLng, wibNow } from '@/lib/shipping'
 import { syncOrderToErp } from '@/lib/erp-sync'
@@ -112,6 +114,13 @@ export async function POST(request) {
   // bisa diandalkan, jadi pesanan Mayar yang menggantung dibersihkan di sini.
   const payCfg = await getMayarConfig().catch(() => ({ gateway: 'midtrans' }))
   const gateway = payCfg.gateway
+  const ipaymuCfg = gateway === 'ipaymu' ? await getIpaymuConfig().catch(() => null) : null
+  if (gateway === 'ipaymu') {
+    if (!ipaymuCfg?.va || !ipaymuCfg?.apiKey || !ipaymuCfg?.notifyToken) {
+      return NextResponse.json({ error: 'Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.' }, { status: 503 })
+    }
+    await expireStaleMayarOrders().catch(() => {})
+  }
   if (gateway === 'mayar') {
     if (!payCfg.apiKey) {
       return NextResponse.json({ error: 'Pembayaran belum disiapkan oleh toko. Silakan pesan via WhatsApp.' }, { status: 503 })
@@ -217,6 +226,41 @@ export async function POST(request) {
       return NextResponse.json({ orderId, accessKey: key, gateway: 'mayar', redirectUrl: inv.link })
     } catch (error) {
       console.error('Gagal membuat tagihan Mayar:', error?.message || error)
+      await failOrderBeforePayment(orderId)
+      return NextResponse.json({ error: 'Gagal membuat transaksi pembayaran. Silakan coba lagi.' }, { status: 500 })
+    }
+  }
+
+  // 3b) iPaymu: buat transaksi, pembeli diarahkan ke halaman bayar iPaymu.
+  if (gateway === 'ipaymu') {
+    try {
+      const key = safeAccessKey(orderId)
+      const origin = siteOrigin(request)
+      const back = `${origin}/pesanan/${encodeURIComponent(orderId)}${key ? `?k=${key}` : ''}`
+      const pay = await createIpaymuPayment(
+        ipaymuCfg,
+        buildIpaymuBody({
+          orderId,
+          customer: orderCustomer,
+          email: loggedIn?.email,
+          amount: grossAmount,
+          returnUrl: back,
+          cancelUrl: back,
+          notifyUrl: `${origin}/api/ipaymu/notification?token=${encodeURIComponent(ipaymuCfg.notifyToken)}`,
+        })
+      )
+      await attachIpaymuPayment(orderId, pay)
+      syncOrderToErp({
+        orderId,
+        items: orderItems,
+        customer: orderCustomer,
+        shipping: shippingInfo,
+        grossAmount,
+        extra: { delivery: deliveryInfo, location, pricing: ctx.pricing, weightKg: ctx.weightKg },
+      })
+      return NextResponse.json({ orderId, accessKey: key, gateway: 'ipaymu', redirectUrl: pay.url })
+    } catch (error) {
+      console.error('Gagal membuat pembayaran iPaymu:', error?.message || error)
       await failOrderBeforePayment(orderId)
       return NextResponse.json({ error: 'Gagal membuat transaksi pembayaran. Silakan coba lagi.' }, { status: 500 })
     }
