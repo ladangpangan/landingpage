@@ -202,7 +202,7 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
             </a>
           </div>
         </div>
-        <div className="mt-7 flex flex-col items-center gap-3 border-t border-white/20 pt-5 text-center text-xs text-lpi-light/80 sm:flex-row sm:justify-between">
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-white/20 pt-5 text-center text-xs text-lpi-light/80">
           <span>© {new Date().getFullYear()} PT Ladang Pangan Indonesia</span>
           <Link href="/lacak" className="underline underline-offset-4 hover:text-white">
             Lacak Pesanan
@@ -212,6 +212,12 @@ export default function ShopShell({ settings, children, searchValue, onSearchCha
           </Link>
           <Link href="/kebijakan-privasi" className="underline underline-offset-4 hover:text-white">
             Kebijakan Privasi
+          </Link>
+          <Link href="/kebijakan-pengembalian-dana" className="underline underline-offset-4 hover:text-white">
+            Pengembalian Dana
+          </Link>
+          <Link href="/faq" className="underline underline-offset-4 hover:text-white">
+            FAQ
           </Link>
         </div>
       </footer>

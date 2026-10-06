@@ -23,5 +23,8 @@ export default async function sitemap() {
       priority: 0.6,
     })),
     { url: `${SITE_URL}/syarat-dan-ketentuan`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${SITE_URL}/kebijakan-pengembalian-dana`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${SITE_URL}/kebijakan-privasi`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${SITE_URL}/faq`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
   ]
 }
