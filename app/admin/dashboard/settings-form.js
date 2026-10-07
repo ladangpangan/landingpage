@@ -43,6 +43,7 @@ import OrdersPanel from './orders-panel'
 import KirimPanel from './kirim-panel'
 import BiteshipPanel from './biteship-panel'
 import ImportPanel from './import-panel'
+import NotifyPanel from './notify-panel'
 import { wibNow } from '@/lib/shipping'
 
 let uid = 0
@@ -79,6 +80,7 @@ const NAV_ITEMS = [
   { id: 'hero', label: 'Hero Carousel', icon: GalleryHorizontal },
   { id: 'media', label: 'Galeri Gambar', icon: ImageIcon },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard, ownerOnly: true },
+  { id: 'notify', label: 'Notifikasi Admin', icon: Phone, ownerOnly: true, noSave: true },
   { id: 'accounts', label: 'Akun', icon: Users },
 ]
 
@@ -864,6 +866,8 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           {tab === 'today' && <TodayPanel summary={summary} go={goTo} hasMongo={hasMongo} />}
 
           {tab === 'orders' && <OrdersPanel key={ordersFilter} initialFilter={ordersFilter} />}
+
+          {tab === 'notify' && isOwner && <NotifyPanel />}
 
           {tab === 'kirim' && <KirimPanel today={summary?.today || wibToday()} />}
 
