@@ -26,6 +26,7 @@ export async function POST(request) {
       schedule: ctx.schedule,
       delivery: ctx.deliveryResolved,
       shippingMethod: ctx.shippingMethod,
+      storeCourier: { open: ctx.storeOpen, cutoffHour: ctx.config.cutoffHour || 17 },
       biteship: {
         available: ctx.biteship.available,
         error: ctx.biteship.error,
