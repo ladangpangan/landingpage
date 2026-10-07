@@ -483,14 +483,14 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
           </>)}
         </Section>
 
-        <Section icon={Tag} title="Kode voucher">
+        <Section icon={Tag} title="Kode voucher atau referral">
           <div className="flex gap-2">
             <input
               className={inputClass}
               value={voucherInput}
               onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && applyVoucher()}
-              placeholder="Punya kode voucher?"
+              placeholder="Punya kode voucher atau referral?"
               maxLength={30}
             />
             <button type="button" onClick={applyVoucher} className="h-12 shrink-0 rounded-xl bg-lpi px-5 text-sm font-bold text-white hover:bg-lpi-dark">
@@ -500,7 +500,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
           {voucherCode && quote?.voucherError && <p className="mt-2 text-sm text-[#9B2C2C]">{quote.voucherError}</p>}
           {voucherCode && quote && !quote.voucherError && pricing?.voucherCode && (
             <p className="mt-2 flex items-center justify-between text-sm font-semibold text-lpi">
-              <span>Voucher {pricing.voucherCode} dipakai</span>
+              <span>{quote.referral ? 'Kode referral' : 'Voucher'} {pricing.voucherCode} dipakai</span>
               <button
                 type="button"
                 onClick={() => {
@@ -523,7 +523,7 @@ export default function CheckoutClient({ whatsappNumber, waMessage, midtransClie
             </div>
             {pricing?.discountShop > 0 && (
               <div className="flex justify-between text-lpi">
-                <dt>Diskon voucher</dt>
+                <dt>{quote?.referral ? 'Diskon referral' : 'Diskon voucher'}</dt>
                 <dd className="font-semibold">− {formatIDR(pricing.discountShop)}</dd>
               </div>
             )}
