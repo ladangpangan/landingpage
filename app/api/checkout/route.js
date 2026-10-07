@@ -6,6 +6,7 @@ import { buildMidtransItems } from '@/lib/checkout-math'
 import { reserveStock, releaseStock } from '@/lib/stock'
 import { reserveSlot, releaseSlot } from '@/lib/delivery'
 import { reserveVoucher, releaseVoucher } from '@/lib/vouchers'
+import { commissionFor, isSelfReferral } from '@/lib/referral-math'
 import { createOrder, attachSnapToken, failOrderBeforePayment, attachMayarInvoice, attachIpaymuPayment, expireStaleMayarOrders } from '@/lib/orders'
 import { getMayarConfig, createMayarInvoice } from '@/lib/mayar-api'
 import { buildInvoiceBody } from '@/lib/mayar'
@@ -59,6 +60,10 @@ export async function POST(request) {
   }
   if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: 400 })
   const viaBiteship = ctx.shippingMethod === 'biteship'
+  // Kurir toko tutup sesudah jam batas: tolak pesanan kurir toko walau browser memaksa (dicek di server).
+  if (!ctx.storeOpen && body.shipping?.method !== 'biteship') {
+    return NextResponse.json({ error: `Kurir toko sudah tutup (sampai jam ${String(ctx.config.cutoffHour || 17).padStart(2, '0')}.00). Silakan pilih Kurir Instan.`, code: 'toko_tutup' }, { status: 409 })
+  }
   if (viaBiteship) {
     const chosen = ctx.biteship.chosen
     if (!chosen) return NextResponse.json({ error: ctx.biteship.error || 'Pilih kurir instan.' }, { status: 409 })
@@ -72,6 +77,13 @@ export async function POST(request) {
     if (!ctx.zoneResult.ok) return NextResponse.json({ error: ctx.zoneResult.error, code: ctx.zoneResult.code }, { status: 400 })
   }
   if (ctx.voucherError) return NextResponse.json({ error: ctx.voucherError }, { status: 400 })
+  // Perujuk tidak boleh memakai kode referralnya sendiri (nomor di pesanan atau di akun yang login).
+  if (ctx.referral) {
+    const who = await getCurrentCustomer().catch(() => null)
+    if (isSelfReferral(ctx.referral.phone, [customer.phone, who?.phone])) {
+      return NextResponse.json({ error: 'Kode referral tidak bisa dipakai untuk pesanan Anda sendiri.' }, { status: 400 })
+    }
+  }
   if (!viaBiteship && !ctx.deliveryResolved?.ok) return NextResponse.json({ error: ctx.deliveryResolved?.error || 'Pilih cara pengiriman.' }, { status: 409 })
   if (!(ctx.pricing.total > 0)) return NextResponse.json({ error: 'Total pembayaran tidak valid.' }, { status: 400 })
 
@@ -167,7 +179,7 @@ export async function POST(request) {
   }
 
   let voucherCode = null
-  if (ctx.pricing.voucherCode) {
+  if (ctx.pricing.voucherCode && !ctx.referral) {
     try {
       if (!(await reserveVoucher(ctx.pricing.voucherCode))) {
         await undo(slotRes, null)
@@ -190,7 +202,8 @@ export async function POST(request) {
       shipping: shippingInfo,
       grossAmount,
       stockReservation: stock.reserved,
-      extra: { weightKg: ctx.weightKg, pricing: ctx.pricing, delivery: deliveryInfo, location, slotReservation: slotRes, voucherCode, customerId: loggedIn?.id || null, gateway },
+      extra: { weightKg: ctx.weightKg, pricing: ctx.pricing, delivery: deliveryInfo, location, slotReservation: slotRes, voucherCode, customerId: loggedIn?.id || null, gateway,
+        referral: ctx.referral ? { code: ctx.referral.code, commissionPct: ctx.referral.commissionPct, commission: commissionFor(ctx.pricing.subtotalAfter, ctx.referral.commissionPct), discount: ctx.pricing.discountShop, status: 'pending' } : undefined },
     })
   } catch (error) {
     console.error('[checkout] gagal menyimpan pesanan:', error?.message || error)

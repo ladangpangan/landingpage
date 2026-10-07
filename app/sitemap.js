@@ -1,5 +1,6 @@
 import { getPublicLandingSettings } from '@/lib/db'
 import { getActiveBundles } from '@/lib/bundles'
+import { listActiveRecipes } from '@/lib/recipes'
 
 const SITE_URL = 'https://marketplace.ladangpangan.id'
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function sitemap() {
   const now = new Date()
-  const [settings, bundles] = await Promise.all([getPublicLandingSettings(), getActiveBundles()])
+  const [settings, bundles, recipes] = await Promise.all([getPublicLandingSettings(), getActiveBundles(), listActiveRecipes()])
   return [
     { url: SITE_URL, lastModified: now, changeFrequency: 'daily', priority: 1 },
     ...settings.products.map((p) => ({
@@ -22,6 +23,8 @@ export default async function sitemap() {
       changeFrequency: 'weekly',
       priority: 0.6,
     })),
+    { url: `${SITE_URL}/inspirasi`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
+    ...recipes.map((r) => ({ url: `${SITE_URL}/inspirasi/${r.id}`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 })),
     { url: `${SITE_URL}/syarat-dan-ketentuan`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${SITE_URL}/kebijakan-pengembalian-dana`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${SITE_URL}/kebijakan-privasi`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
