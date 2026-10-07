@@ -2,10 +2,11 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { ClipboardList, HelpCircle, MapPin, MessageCircle, Phone, Search, Store, Undo2, X } from 'lucide-react'
+import { ChefHat, ClipboardList, HelpCircle, MapPin, MessageCircle, Phone, Search, Store, Undo2, X } from 'lucide-react'
 
 const ITEMS = [
   { href: '/', label: 'Beranda', icon: Store },
+  { href: '/inspirasi', label: 'Inspirasi Menu', icon: ChefHat },
   { href: '/pesanan-saya', label: 'Pesanan Saya', icon: ClipboardList },
   { href: '/alamat', label: 'Alamat Tersimpan', icon: MapPin },
   { href: '/lacak', label: 'Lacak Pesanan', icon: Search },
