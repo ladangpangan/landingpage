@@ -8,6 +8,16 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-landing_app}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD wajib diisi}
 
+  # Gateway WhatsApp (Baileys, TIDAK resmi) khusus notifikasi ADMIN. Tanpa port publik. Berhenti sendiri bila
+  # WA_GATEWAY_TOKEN kosong (aplikasi utama tetap jalan). Sesi login ada di volume wa_auth.
+  wa-gateway:
+    build: ./wa-gateway
+    restart: unless-stopped
+    environment:
+      GATEWAY_TOKEN: ${WA_GATEWAY_TOKEN:-}
+    volumes:
+      - wa_auth:/data
+
   landing:
     build: .
     restart: unless-stopped
@@ -32,6 +42,9 @@ services:
       SITE_URL: ${SITE_URL:-https://marketplace.ladangpangan.id}
       ERP_INTEGRATION_URL: ${ERP_INTEGRATION_URL:-}
       ERP_INTEGRATION_KEY: ${ERP_INTEGRATION_KEY:-}
+      # Notifikasi admin lewat WhatsApp (Baileys); gateway hanya bisa dijangkau dari jaringan internal Docker.
+      WA_GATEWAY_URL: http://wa-gateway:3100
+      WA_GATEWAY_TOKEN: ${WA_GATEWAY_TOKEN:-}
     # Traefik (sudah terpasang di VPS KVM 2) mengurus HTTPS dan arah trafik.
     labels:
       - "traefik.enable=true"
@@ -44,3 +57,4 @@ services:
 volumes:
   uploads_data:
   mongo_data:
+  wa_auth:

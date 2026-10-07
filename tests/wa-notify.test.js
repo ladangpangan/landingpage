@@ -87,3 +87,33 @@ test('telegram: balasan ramah', () => {
   assert.match(interpretTelegramResponse(403, { description: 'Forbidden: bot was blocked by the user' }).error, /Start/)
   assert.match(interpretTelegramResponse(500, {}).error, /500/)
 })
+
+import { sanitizeBaileysConfig, gatewayUrl, interpretGatewaySend, describeGatewayStatus, baileysText } from '../lib/baileys-notify.js'
+
+test('baileys: pengaturan nomor admin', () => {
+  assert.deepEqual(sanitizeBaileysConfig({ enabled: true, adminNumbers: '0812-3456-7890\n0813 1111 2222' }).value, { enabled: true, adminNumbers: ['6281234567890', '6281311112222'] })
+  assert.equal(sanitizeBaileysConfig({ adminNumbers: '' }).value.enabled, false)
+  assert.ok(sanitizeBaileysConfig({ adminNumbers: '0812-3456-7890, 12' }).error)
+  assert.ok(sanitizeBaileysConfig(null).error)
+  assert.ok(baileysText('paid', { orderId: 'LPI-1', customer: { name: 'A' }, grossAmount: 1000 }).includes('LPI-1'))
+})
+
+test('baileys: alamat gateway dan balasan kirim', () => {
+  assert.equal(gatewayUrl({}), 'http://wa-gateway:3100')
+  assert.equal(gatewayUrl({ WA_GATEWAY_URL: 'http://x:1///' }), 'http://x:1')
+  assert.deepEqual(interpretGatewaySend(200, { ok: true, id: 'a' }), { ok: true, id: 'a' })
+  assert.match(interpretGatewaySend(0, {}, 'jaringan').error, /tidak bisa dihubungi/)
+  assert.match(interpretGatewaySend(401, {}).error, /Token gateway/)
+  assert.match(interpretGatewaySend(409, { code: 'not_connected' }).error, /scan QR/i)
+  assert.match(interpretGatewaySend(422, { code: 'not_on_whatsapp' }).error, /tidak terdaftar/)
+  assert.match(interpretGatewaySend(502, { error: 'boom' }).error, /boom/)
+})
+
+test('baileys: status untuk admin, QR hanya data URL PNG yang sah', () => {
+  assert.equal(describeGatewayStatus(0, {}, 'x').state, 'unreachable')
+  assert.equal(describeGatewayStatus(401, {}).state, 'unauthorized')
+  const q = describeGatewayStatus(200, { state: 'qr', qrImage: 'data:image/png;base64,AAAA==' })
+  assert.deepEqual([q.state, q.label, q.qrImage], ['qr', 'Menunggu scan QR', 'data:image/png;base64,AAAA=='])
+  assert.equal(describeGatewayStatus(200, { state: 'qr', qrImage: 'javascript:alert(1)' }).qrImage, null)
+  assert.equal(describeGatewayStatus(200, { state: 'open', me: '6281234567890:12@s.whatsapp.net' }).me, '6281234567890')
+})

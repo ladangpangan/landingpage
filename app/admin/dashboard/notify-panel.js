@@ -50,21 +50,43 @@ export default function NotifyPanel() {
   const [tg, setTg] = useState(null)
   const [busy, setBusy] = useState('')
   const [results, setResults] = useState(null)
+  const [bl, setBl] = useState(null)
+  const [gw, setGw] = useState(null)
 
   const apply = useCallback((v) => {
     setView(v)
     setWa({ enabled: v.wa.enabled, phoneNumberId: v.wa.phoneNumberId, adminNumbers: v.wa.adminNumbers.join('\n'), templatePaid: v.wa.templatePaid, templateReview: v.wa.templateReview, language: v.wa.language, token: '' })
     setTg({ enabled: v.telegram.enabled, chatIds: v.telegram.chatIds.join('\n'), token: '' })
+    setBl({ enabled: v.baileys.enabled, adminNumbers: v.baileys.adminNumbers.join('\n') })
   }, [])
 
   useEffect(() => {
     api('/api/admin/notify', 'GET').then(apply).catch((e) => toast.error(e.message))
   }, [apply])
 
+  // Status sambungan WhatsApp (Baileys) + QR: diperbarui tiap 4 detik selama tab ini terbuka.
+  useEffect(() => {
+    let alive = true
+    const tick = () => api('/api/admin/notify/baileys', 'GET').then((d) => alive && setGw(d)).catch(() => {})
+    tick()
+    const t = setInterval(tick, 4000)
+    return () => { alive = false; clearInterval(t) }
+  }, [])
+
+  async function disconnect() {
+    if (!window.confirm('Putuskan WhatsApp dari HP ini? Anda perlu scan QR lagi untuk menyambung.')) return
+    try {
+      await api('/api/admin/notify/baileys', 'POST', { action: 'logout' })
+      toast.success('Diputuskan. QR baru akan muncul sebentar lagi.')
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
+
   async function save() {
     setBusy('save')
     try {
-      apply(await api('/api/admin/notify', 'PUT', { wa, telegram: tg }))
+      apply(await api('/api/admin/notify', 'PUT', { wa, telegram: tg, baileys: bl }))
       toast.success('Pengaturan notifikasi tersimpan.')
     } catch (e) {
       toast.error(e.message)
@@ -85,7 +107,7 @@ export default function NotifyPanel() {
     }
   }
 
-  if (!view || !wa || !tg) return <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-[#2FA966]" /></div>
+  if (!view || !wa || !tg || !bl) return <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-[#2FA966]" /></div>
   return (
     <div className="mx-auto w-full max-w-3xl space-y-3" onKeyDown={noEnter}>
       <div className={cardClass}>
@@ -105,6 +127,35 @@ export default function NotifyPanel() {
         </Field>
         <Field label="Chat ID penerima (satu per baris, maks. 5)" hint="Grup memakai angka diawali tanda minus."><textarea className={inputClass} rows={2} value={tg.chatIds} onChange={(e) => setTg({ ...tg, chatIds: e.target.value })} /></Field>
         <Switch checked={tg.enabled} onChange={(v) => setTg({ ...tg, enabled: v })} title="Kirim lewat Telegram" desc={tg.enabled ? 'AKTIF' : 'Nonaktif'} />
+      </div>
+
+      <div className={`${cardClass} space-y-4`}>
+        <h3 className="font-semibold text-[#142A1C]">WhatsApp lewat Baileys <span className="ml-1 rounded-md bg-[#FDECEC] px-2 py-0.5 text-xs text-[#9B2C2C]">tidak resmi</span></h3>
+        <p className="rounded-xl bg-[#FDF6E3] p-3 text-xs text-[#5C4A12]">
+          Cara ini menautkan satu nomor WhatsApp seperti &ldquo;WhatsApp Web&rdquo;. <b>Hanya untuk kabar ke admin.</b> WhatsApp tidak mengizinkan cara ini secara resmi, jadi nomornya <b>bisa saja diblokir</b>.
+          Pakai <b>nomor khusus</b> (bukan nomor toko untuk pembeli), simpan nomor itu di kontak admin, dan kirim satu pesan &ldquo;hai&rdquo; ke nomor itu dari HP admin sebelum dipakai.
+        </p>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className={`rounded-full px-3 py-1 font-semibold ${gw?.state === 'open' ? 'bg-[#E3F0E7] text-[#1E5A3A]' : gw?.state === 'qr' ? 'bg-[#E8F0FE] text-[#1A4FA3]' : 'bg-[#F3F4F6] text-[#4B5563]'}`}>{gw ? gw.label : 'Memeriksa…'}</span>
+          {gw?.me && <span className="text-[#4C6356]">Nomor tertaut: {gw.me}</span>}
+          {gw?.state === 'open' && <button type="button" onClick={disconnect} className="rounded-xl border border-[#D6EBDC] px-3 py-1.5 text-xs font-medium text-red-700 hover:border-red-300">Putuskan</button>}
+        </div>
+        {gw?.state === 'not_installed' && <p className="text-xs text-[#9B2C2C]">Gateway belum dipasang di server (WA_GATEWAY_TOKEN kosong). Hubungi pengembang untuk mengaktifkannya.</p>}
+        {gw?.state === 'unauthorized' && <p className="text-xs text-[#9B2C2C]">Token gateway tidak cocok dengan server. Hubungi pengembang.</p>}
+        {gw?.state === 'unreachable' && <p className="text-xs text-[#9B2C2C]">Gateway tidak menjawab. Tunggu satu menit setelah pemasangan, lalu muat ulang halaman.</p>}
+        {gw?.qrImage && (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-[#D6EBDC] p-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={gw.qrImage} alt="Kode QR WhatsApp" width={240} height={240} className="h-60 w-60" />
+            <ol className="list-decimal space-y-0.5 pl-5 text-xs text-[#4C6356]">
+              <li>Di HP nomor khusus, buka WhatsApp.</li>
+              <li>Ketuk <b>titik tiga / Pengaturan &gt; Perangkat tertaut &gt; Tautkan perangkat</b>.</li>
+              <li>Arahkan kamera ke kode QR ini (kode berganti otomatis).</li>
+            </ol>
+          </div>
+        )}
+        <Field label="Nomor WhatsApp admin penerima (satu per baris, maks. 5)" hint="Contoh: 0812 3456 7890."><textarea className={inputClass} rows={3} value={bl.adminNumbers} onChange={(e) => setBl({ ...bl, adminNumbers: e.target.value })} /></Field>
+        <Switch checked={bl.enabled} onChange={(v) => setBl({ ...bl, enabled: v })} title="Kirim lewat WhatsApp (Baileys)" desc={bl.enabled ? 'AKTIF' : 'Nonaktif'} />
       </div>
 
       <div className={`${cardClass} space-y-4`}>
@@ -133,7 +184,7 @@ export default function NotifyPanel() {
             {results.length === 0 && <li className="rounded-xl bg-[#FDECEC] p-3 text-[#9B2C2C]">Belum ada saluran yang aktif. Nyalakan salah satu lalu Simpan.</li>}
             {results.map((r, i) => (
               <li key={i} className={`rounded-xl p-3 ${r.ok ? 'bg-[#E3F0E7] text-[#1E5A3A]' : 'bg-[#FDECEC] text-[#9B2C2C]'}`}>
-                {r.channel === 'whatsapp' ? 'WhatsApp' : 'Telegram'} {r.to}: {r.ok ? 'terkirim' : r.error}
+                {r.channel === 'whatsapp' ? 'WhatsApp (resmi)' : r.channel === 'baileys' ? 'WhatsApp (Baileys)' : 'Telegram'} {r.to}: {r.ok ? 'terkirim' : r.error}
               </li>
             ))}
           </ul>
