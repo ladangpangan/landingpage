@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   haversineKm, roadDistanceKm, zoneForDistance, locateZone, slotCapacityKg, slotOptions,
-  immediateSlot, resolveDelivery, scheduledDates, wibNow, addDays, validLatLng,
+  immediateSlot, storeCourierOpen, resolveDelivery, scheduledDates, wibNow, addDays, validLatLng,
 } from '../lib/shipping.js'
 
 const zones = [
@@ -113,4 +113,14 @@ test('pilihan jadwal dari pembeli diperiksa', () => {
   assert.match(resolveDelivery({ ...base, usedKg: { '2026-10-06|siang': 35 }, delivery: { mode: 'terjadwal', date: '2026-10-06', slotId: 'siang' } }).error, /penuh/)
   assert.match(resolveDelivery({ ...base, delivery: { mode: 'besok' } }).error, /Pilih cara/)
   assert.equal(resolveDelivery({ ...base, delivery: { mode: 'sekarang' } }).slotId, 'pagi')
+})
+
+test('kurir toko tutup mulai jam batas (17.00 WIB), semua mode', () => {
+  const cfg = { cutoffHour: 17 }
+  assert.equal(storeCourierOpen({ config: cfg, now: new Date('2026-10-05T09:59:00Z') }), true) // 16:59 WIB
+  assert.equal(storeCourierOpen({ config: cfg, now: new Date('2026-10-05T10:00:00Z') }), false) // 17:00 WIB
+  assert.equal(storeCourierOpen({ config: cfg, now: new Date('2026-10-05T16:30:00Z') }), false) // 23:30 WIB
+  assert.equal(storeCourierOpen({ config: cfg, now: new Date('2026-10-05T17:30:00Z') }), true) // 00:30 WIB hari berikutnya
+  assert.equal(storeCourierOpen({ config: {}, now: new Date('2026-10-05T11:00:00Z') }), false) // bawaan 17
+  assert.equal(storeCourierOpen({ config: { cutoffHour: 15 }, now: new Date('2026-10-05T08:30:00Z') }), false) // 15:30 WIB
 })

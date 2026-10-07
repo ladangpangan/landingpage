@@ -59,6 +59,10 @@ export async function POST(request) {
   }
   if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: 400 })
   const viaBiteship = ctx.shippingMethod === 'biteship'
+  // Kurir toko tutup sesudah jam batas: tolak pesanan kurir toko walau browser memaksa (dicek di server).
+  if (!ctx.storeOpen && body.shipping?.method !== 'biteship') {
+    return NextResponse.json({ error: `Kurir toko sudah tutup (sampai jam ${String(ctx.config.cutoffHour || 17).padStart(2, '0')}.00). Silakan pilih Kurir Instan.`, code: 'toko_tutup' }, { status: 409 })
+  }
   if (viaBiteship) {
     const chosen = ctx.biteship.chosen
     if (!chosen) return NextResponse.json({ error: ctx.biteship.error || 'Pilih kurir instan.' }, { status: 409 })
