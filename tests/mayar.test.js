@@ -50,3 +50,20 @@ test('token webhook dibandingkan aman', () => {
   assert.ok(!verifyCallbackToken('x', ''))
   assert.ok(!verifyCallbackToken(undefined, 'rahasia'))
 })
+
+test('pengingat dan uji coba TIDAK dianggap dibayar walau status SUCCESS (bug nyata 6 Okt 2026)', () => {
+  for (const bad of [
+    { event: 'payment.reminder', status: 'SUCCESS' },
+    { event: 'testing', status: 'SUCCESS' },
+    { event: 'invoice.created', status: 'SUCCESS' },
+    { event: '', status: 'SUCCESS' },
+    { event: 'payment.received', status: 'FAILED' },
+    { event: 'membership.memberExpired', status: 'SUCCESS' },
+  ]) assert.ok(!isPaidEvent(bad), JSON.stringify(bad))
+  for (const good of [
+    { event: 'payment.received', status: 'SUCCESS' },
+    { event: 'payment.received', status: '' },
+    { event: '', status: 'PAID' },
+    { event: 'payment.success', status: 'SUCCESS' },
+  ]) assert.ok(isPaidEvent(good), JSON.stringify(good))
+})
