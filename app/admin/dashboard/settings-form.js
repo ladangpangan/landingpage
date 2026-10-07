@@ -44,6 +44,8 @@ import KirimPanel from './kirim-panel'
 import BiteshipPanel from './biteship-panel'
 import ImportPanel from './import-panel'
 import RecipesPanel from './recipes-panel'
+import ReferralPanel from './referral-panel'
+import CustomersPanel from './customers-panel'
 import { wibNow } from '@/lib/shipping'
 
 let uid = 0
@@ -72,9 +74,11 @@ const NAV_ITEMS = [
   { id: 'today', label: 'Hari ini', icon: LayoutDashboard, group: 'Harian', noSave: true },
   { id: 'orders', label: 'Pesanan', icon: ClipboardList, noSave: true },
   { id: 'kirim', label: 'Daftar Kirim Kurir', icon: Truck, noSave: true },
+  { id: 'customers', label: 'Pelanggan', icon: Users, ownerOnly: true, noSave: true },
   { id: 'products', label: 'Produk & Promo', icon: Package, group: 'Produk & Paket' },
   { id: 'bundles', label: 'Paket Hemat & Masak', icon: Boxes },
   { id: 'recipes', label: 'Inspirasi Menu', icon: Boxes, noSave: true },
+  { id: 'referral', label: 'Referral', icon: Users, ownerOnly: true, noSave: true },
   { id: 'delivery', label: 'Ongkir & Voucher', icon: Truck, ownerOnly: true, group: 'Pengaturan' },
   { id: 'biteship', label: 'Kurir Instan (Biteship)', icon: Truck, ownerOnly: true, noSave: true },
   { id: 'contact', label: 'Pengaturan Toko', icon: Phone },
@@ -866,6 +870,9 @@ export default function SettingsForm({ initialSettings, availableImages, hasMong
           {tab === 'today' && <TodayPanel summary={summary} go={goTo} hasMongo={hasMongo} />}
 
           {tab === 'orders' && <OrdersPanel key={ordersFilter} initialFilter={ordersFilter} />}
+
+          {tab === 'referral' && isOwner && <ReferralPanel />}
+          {tab === 'customers' && isOwner && <CustomersPanel />}
 
           {tab === 'kirim' && <KirimPanel today={summary?.today || wibToday()} />}
 
