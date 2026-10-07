@@ -5,6 +5,8 @@ import { Award, MapPin, MessageCircle, ShieldCheck, Snowflake } from 'lucide-rea
 import ShopShell from './_components/shop-shell'
 import { makeWaLink } from '@/lib/wa'
 import HeroCarousel from './_components/hero-carousel'
+import RecipeCard from './_components/recipe-card'
+import Link from 'next/link'
 import { BundleCard, ProductCard } from './_components/cards'
 import { matchesQuery } from '@/lib/search'
 
@@ -36,7 +38,7 @@ function BundleRow({ bundles }) {
   )
 }
 
-export default function Storefront({ settings, bundles, initialQuery = '' }) {
+export default function Storefront({ settings, bundles, recipes = [], initialQuery = '' }) {
   const [search, setSearch] = useState(initialQuery)
   const [category, setCategory] = useState('Semua')
   const waLink = makeWaLink(settings)
@@ -67,6 +69,7 @@ export default function Storefront({ settings, bundles, initialQuery = '' }) {
     hemat.length > 0 && { href: '#paket-hemat', label: 'Paket Hemat' },
     masak.length > 0 && { href: '#paket-masak', label: 'Paket Masak' },
     promo.length > 0 && { href: '#promo', label: 'Promo' },
+    recipes.length > 0 && { href: '#inspirasi', label: 'Inspirasi Menu' },
     { href: '#produk', label: 'Semua Produk' },
   ].filter(Boolean)
 
@@ -143,6 +146,17 @@ export default function Storefront({ settings, bundles, initialQuery = '' }) {
           {masak.length > 0 && (
             <Section id="paket-masak" title="Paket Masak" subtitle="Bahan sudah dipilihkan, lengkap dengan resepnya.">
               <BundleRow bundles={masak} />
+            </Section>
+          )}
+
+          {recipes.length > 0 && (
+            <Section id="inspirasi" title="Inspirasi Menu" subtitle="Bingung masak apa? Pilih resep, bahan langsung masuk keranjang.">
+              <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
+                {recipes.slice(0, 6).map((r) => (
+                  <div key={r.id} className="w-64 shrink-0 sm:w-auto"><RecipeCard recipe={r} /></div>
+                ))}
+              </div>
+              <p className="mt-2"><Link href="/inspirasi" className="text-sm font-bold text-lpi underline">Lihat semua resep</Link></p>
             </Section>
           )}
 

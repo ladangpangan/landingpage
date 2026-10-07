@@ -18,6 +18,7 @@ export async function POST(request) {
       subtotal: ctx.subtotal,
       pricing: ctx.pricing,
       voucherError: ctx.voucherError,
+      referral: ctx.referral ? { code: ctx.referral.code } : null,
       zone: z.ok ? { name: z.zone.name, fee: z.zone.fee, freeShippingMin: z.zone.freeShippingMin, distanceKm: z.distanceKm } : null,
       zoneError: z.ok ? null : { code: z.code, message: z.error, distanceKm: z.distanceKm ?? null },
       immediate: ctx.immediate.ok
@@ -26,6 +27,7 @@ export async function POST(request) {
       schedule: ctx.schedule,
       delivery: ctx.deliveryResolved,
       shippingMethod: ctx.shippingMethod,
+      storeCourier: { open: ctx.storeOpen, cutoffHour: ctx.config.cutoffHour || 17 },
       biteship: {
         available: ctx.biteship.available,
         error: ctx.biteship.error,
